@@ -81,7 +81,7 @@ Muốn đổi cách gọi API (vd thêm header) chỉ sửa `services/`; muốn 
 | Câu hỏi | **Bạn là ai?** | **Bạn được làm gì?** |
 | Cách làm | Đăng nhập bằng tên + mật khẩu | Kiểm tra vai trò (role) của người đã xác thực |
 | Lỗi HTTP | **401** Unauthorized — chưa đăng nhập / hết phiên | **403** Forbidden — đã biết bạn là ai nhưng không đủ quyền |
-| Trong dự án | `require_login()` trong `lib/auth.php` | `require_role('admin')` trong `lib/auth.php` |
+| Trong dự án | `$auth->requireLogin()` trong `app/Auth/Auth.php` | `$auth->requireRole(Auth::ROLE_ADMIN)` trong `app/Auth/Auth.php` |
 
 Phân quyền trong dự án:
 
@@ -163,11 +163,11 @@ React (trình duyệt)                                PHP (server)
    → setUser(...) trong AuthProvider → mọi component dùng useAuth() vẽ lại
 
 3. Gọi API (trình duyệt tự gửi cookie)
-   DELETE api/products.php  ────────────────────►  require_role('admin') → OK → xóa
+   DELETE api/products.php  ────────────────────►  requireRole('admin') → OK → xóa
    Cookie: BITP_SESSION=abc
 
 4. Hết phiên / bị đăng xuất ở nơi khác
-   GET api/products.php  ───────────────────────►  require_login() → 401
+   GET api/products.php  ───────────────────────►  requireLogin() → 401
                      ◄───────────────────────────
    → http.js gọi unauthorizedHandler → setUser(null) → quay về #/login
 
@@ -176,7 +176,7 @@ React (trình duyệt)                                PHP (server)
 ```
 
 File liên quan:
-- PHP: `api/auth.php`, `lib/auth.php`, `lib/models/user.php`
+- PHP: `api/auth.php`, `app/Controllers/AuthController.php`, `app/Auth/Auth.php`, `app/Repositories/UserRepository.php`
 - React: `src/services/authService.js`, `src/services/http.js`, `src/context/AuthProvider.jsx`,
   `src/hooks/useAuth.js`, `src/components/ProtectedRoute.jsx`, `src/pages/LoginPage.jsx`
 

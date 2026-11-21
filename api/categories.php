@@ -1,11 +1,7 @@
 <?php
-// API danh mục
-//
-//   GET api/categories.php   danh sách danh mục + số sản phẩm (đăng nhập)
-require_once dirname(__DIR__) . '/lib/bootstrap.php';
+// API danh mục — xử lý trong App\Controllers\CategoryController
+require_once dirname(__DIR__) . '/app/bootstrap.php';
 
-if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
-    json_error('Phương thức không được hỗ trợ.', 405);
-}
-require_login();
-json_response(category_all($conn));
+use App\Controllers\CategoryController;
+
+(new CategoryController($app->request(), $app->auth(), $app->categories()))->handle();

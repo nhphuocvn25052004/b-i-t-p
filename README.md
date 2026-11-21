@@ -69,7 +69,7 @@ Chép nội dung `dist/` **cùng thư mục** với `api/` trên server:
 ├── index.html      ← từ dist/
 ├── assets/         ← từ dist/
 ├── api/
-├── lib/
+├── app/
 └── config.php
 ```
 
@@ -78,19 +78,29 @@ Chép nội dung `dist/` **cùng thư mục** với `api/` trên server:
 ## Cấu trúc thư mục
 
 ```
-├── api/                      API JSON — mỗi file 1 nhóm chức năng
-│   ├── auth.php              đăng nhập / đăng xuất / user hiện tại
-│   ├── products.php          CRUD + tìm kiếm + lọc + phân trang
-│   └── categories.php        danh sách danh mục
-├── lib/
-│   ├── bootstrap.php         nạp mọi file dưới đây + bắt lỗi chung (JSON 500) cho mọi API
-│   ├── import.php            kết nối CSDL, tạo $conn
-│   ├── functions.php         json_response(), read_json_body(), string_field(), db_query()...
-│   ├── auth.php              session, require_login() (401), require_role() (403)
-│   └── models/               mọi câu SQL
-│       ├── product.php
-│       ├── category.php
-│       └── user.php
+├── api/                      điểm vào API — mỗi file chỉ tạo controller rồi gọi handle()
+│   ├── auth.php              → AuthController
+│   ├── products.php          → ProductController
+│   └── categories.php        → CategoryController
+├── app/                      backend PHP hướng đối tượng, namespace App\ (PSR-4)
+│   ├── autoload.php          tự nạp class: App\Core\Database → app/Core/Database.php
+│   ├── bootstrap.php         nạp autoload, kết nối CSDL, bắt lỗi chung (JSON 500), tạo $app
+│   ├── Core/
+│   │   ├── App.php           tạo + nối các đối tượng dùng chung (dependency injection)
+│   │   ├── Database.php      bọc mysqli: query() prepared statement, transaction()
+│   │   ├── Request.php       method, query string, body JSON (bắt buộc Content-Type JSON)
+│   │   └── JsonResponse.php  trả JSON / lỗi {"error": "..."}
+│   ├── Auth/Auth.php         đăng nhập, session, requireLogin() (401), requireRole() (403)
+│   ├── Controllers/          nhận request, kiểm tra quyền, gọi repository, trả JSON
+│   │   ├── AuthController.php
+│   │   ├── ProductController.php
+│   │   └── CategoryController.php
+│   ├── Repositories/         mọi câu SQL
+│   │   ├── ProductRepository.php
+│   │   ├── CategoryRepository.php
+│   │   └── UserRepository.php
+│   ├── Validators/ProductValidator.php   kiểm tra dữ liệu sản phẩm (lỗi → 422)
+│   └── Services/DatabaseExporter.php     tạo nội dung database.sql (dùng bởi scripts/export_db.php)
 ├── migrations/               nâng cấp CSDL cũ, không mất dữ liệu
 ├── scripts/export_db.php     xuất dữ liệu ra database.sql (dòng lệnh)
 ├── database.sql              tạo CSDL + dữ liệu mẫu
@@ -121,7 +131,7 @@ Chép nội dung `dist/` **cùng thư mục** với `api/` trên server:
     └── utils/format.js
 ```
 
-Luồng React: **Page** → **Hook** → **Service** → `http.js` → PHP `api/` → `lib/models/` → MySQL.
+Luồng React: **Page** → **Hook** → **Service** → `http.js` → PHP `api/` → **Controller** → **Repository** → MySQL.
 
 ## API
 
@@ -190,6 +200,6 @@ sudo mysql < database.sql   # database.sql → MySQL (XÓA bảng products, cate
 - Mật khẩu băm bằng `password_hash`; cookie phiên `HttpOnly`, `SameSite=Lax`;
   đổi session id sau khi đăng nhập.
 - API ghi dữ liệu bắt buộc JSON → form của trang khác không giả mạo được (CSRF).
-- Quyền được kiểm tra ở **server** (`lib/auth.php`); ẩn nút trên giao diện chỉ để gọn.
-- Không commit `config.php` (đã có trong `.gitignore`). Chỉ cần đưa `dist/`, `api/`, `lib/`,
+- Quyền được kiểm tra ở **server** (`app/Auth/Auth.php`); ẩn nút trên giao diện chỉ để gọn.
+- Không commit `config.php` (đã có trong `.gitignore`). Chỉ cần đưa `dist/`, `api/`, `app/`,
   `config.php` lên server — không cần `src/`, `node_modules/`, `migrations/`, `*.sql`.
