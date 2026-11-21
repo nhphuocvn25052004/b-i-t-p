@@ -6,9 +6,9 @@ export default defineConfig({
   // Đường dẫn tương đối để chạy được cả khi đặt trong thư mục con
   base: './',
   server: {
-    // Khi chạy "npm run dev", chuyển các request api.php sang PHP (php -S 127.0.0.1:8000)
+    // Khi chạy "npm run dev", chuyển các request api/*.php sang PHP (php -S 127.0.0.1:8000)
     proxy: {
-      '/api.php': 'http://127.0.0.1:8000',
+      '/api': 'http://127.0.0.1:8000',
     },
   },
 });
