@@ -94,9 +94,9 @@ function product_delete_many(mysqli $conn, array $ids): int
 function product_from_request(array $input): array
 {
     $data = [
-        'name'        => trim($input['name'] ?? ''),
-        'price'       => $input['price'] ?? '',
-        'description' => trim($input['description'] ?? ''),
+        'name'        => is_string($input['name'] ?? null) ? trim($input['name']) : '',
+        'price'       => is_scalar($input['price'] ?? null) ? $input['price'] : '',
+        'description' => is_string($input['description'] ?? null) ? trim($input['description']) : '',
     ];
 
     $error = '';

@@ -1,29 +1,24 @@
 <?php
-// Các hàm tiện ích dùng chung
+// Các hàm tiện ích dùng chung cho API
 
-// Escape dữ liệu trước khi in ra HTML
-function e($value): string
+// Trả về JSON và dừng script
+function json_response($data, int $status = 200): void
 {
-    return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
-}
-
-// Chuyển hướng và dừng script
-function redirect(string $url): void
-{
-    header("Location: $url");
+    http_response_code($status);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode($data, JSON_UNESCAPED_UNICODE);
     exit;
 }
 
-// Thông báo sau khi thêm / sửa / xóa (truyền qua ?msg=, số lượng qua ?n=)
-function flash_message(): string
+// Trả về lỗi dạng {"error": "..."}
+function json_error(string $message, int $status = 400): void
 {
-    $messages = [
-        'added'        => 'Đã thêm sản phẩm.',
-        'updated'      => 'Đã cập nhật sản phẩm.',
-        'deleted'      => 'Đã xóa sản phẩm.',
-        'bulk_deleted' => 'Đã xóa %d sản phẩm.',
-        'none_chosen'  => 'Bạn chưa chọn sản phẩm nào để xóa.',
-    ];
-    $msg = $messages[$_GET['msg'] ?? ''] ?? '';
-    return sprintf($msg, (int)($_GET['n'] ?? 0));
+    json_response(['error' => $message], $status);
+}
+
+// Đọc body JSON của request, trả về mảng (rỗng nếu không hợp lệ)
+function read_json_body(): array
+{
+    $data = json_decode(file_get_contents('php://input'), true);
+    return is_array($data) ? $data : [];
 }

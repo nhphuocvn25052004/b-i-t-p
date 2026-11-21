@@ -1,3 +1,5 @@
 config.php
 .env
 index.nginx-debian.html
+node_modules/
+dist/

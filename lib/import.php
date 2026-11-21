@@ -10,5 +10,9 @@ try {
 } catch (mysqli_sql_exception $e) {
     error_log("Lỗi kết nối MySQL: " . $e->getMessage());
     http_response_code(500);
-    exit("Lỗi kết nối MySQL");
+    if (PHP_SAPI !== 'cli') {
+        header('Content-Type: application/json; charset=utf-8');
+        exit(json_encode(['error' => 'Lỗi kết nối MySQL'], JSON_UNESCAPED_UNICODE));
+    }
+    exit("Lỗi kết nối MySQL\n");
 }

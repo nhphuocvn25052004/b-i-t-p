@@ -1,10 +1,13 @@
-# Quản lý sản phẩm (PHP + MySQL)
+# Quản lý sản phẩm (React + PHP + MySQL)
 
 Ứng dụng web nhỏ để xem, thêm, sửa, xóa sản phẩm (CRUD) trong bảng `products`.
-Viết bằng PHP thuần (mysqli), không dùng framework.
+
+- **Giao diện:** React 18 (Vite, react-router-dom) — thư mục `src/`
+- **Backend:** PHP thuần (mysqli) cung cấp API JSON — file `api.php`
 
 ## Yêu cầu
 
+- Node.js 18 trở lên (chỉ cần để build giao diện)
 - PHP 7.4 trở lên, có extension `mysqli`
 - MySQL / MariaDB
 - Web server: Nginx hoặc Apache (có PHP-FPM)
@@ -24,45 +27,88 @@ Viết bằng PHP thuần (mysqli), không dùng framework.
    GRANT SELECT, INSERT, UPDATE, DELETE ON website_db.* TO 'webuser'@'localhost';
    ```
 
-3. Khai báo thông tin kết nối trong [lib/import.php](lib/import.php)
-   (host, user, mật khẩu, tên CSDL).
+3. Sao chép `config.example.php` thành `config.php` và điền thông tin kết nối.
 
-4. Đặt thư mục vào web root (ví dụ `/var/www/html`) và mở `http://<địa-chỉ-server>/index.php`.
-
-   Chạy thử nhanh không cần web server:
+4. Cài thư viện JavaScript:
 
    ```bash
-   php -S 127.0.0.1:8000
+   npm install
    ```
+
+## Chạy khi phát triển
+
+Mở 2 cửa sổ dòng lệnh:
+
+```bash
+php -S 127.0.0.1:8000    # API PHP
+npm run dev              # giao diện React tại http://localhost:5173
+```
+
+Vite tự chuyển các request `api.php` sang PHP ở cổng 8000 (xem `vite.config.js`).
+
+## Đưa lên server
+
+```bash
+npm run build            # tạo thư mục dist/ (index.html + assets/)
+```
+
+Đặt `dist/index.html`, `dist/assets/` **cùng thư mục** với `api.php` trên server, ví dụ:
+
+```
+/var/www/html/
+├── index.html      ← từ dist/
+├── assets/         ← từ dist/
+├── api.php
+├── product.php
+├── config.php
+└── lib/
+```
+
+Mở `http://<địa-chỉ-server>/`. Ứng dụng dùng đường dẫn dạng `#/create`, `#/edit/3`
+nên không cần cấu hình rewrite cho web server.
 
 ## Cấu trúc thư mục
 
 ```
-├── index.php             READ   – danh sách sản phẩm
-├── create.php            CREATE – thêm sản phẩm
-├── edit.php              UPDATE – sửa sản phẩm (?id=...)
-├── delete.php            DELETE – xóa 1 sản phẩm (chỉ nhận POST)
-├── bulk_delete.php       DELETE – xóa nhiều sản phẩm đã chọn (chỉ nhận POST, ids[])
-├── search.php            tìm kiếm theo tên / mô tả (?q=từ khóa)
+├── api.php               API JSON (GET / POST / PUT / DELETE) cho giao diện React
 ├── product.php           model: mọi câu SQL của bảng products
+├── config.example.php    mẫu file cấu hình CSDL (copy thành config.php)
 ├── database.sql          script tạo CSDL + dữ liệu (tạo bởi scripts/export_db.php)
 ├── scripts/
 │   └── export_db.php     xuất dữ liệu hiện tại ra database.sql (chỉ chạy bằng dòng lệnh)
 ├── lib/
-│   ├── bootstrap.php     nạp import.php, functions.php, product.php — mỗi trang chỉ cần require file này
+│   ├── bootstrap.php     nạp import.php, functions.php, product.php
 │   ├── import.php        kết nối CSDL, tạo biến $conn
-│   └── functions.php     hàm tiện ích: e(), redirect(), flash_message()
-├── views/
-│   ├── header.php        phần đầu trang, tiêu đề, thông báo
-│   ├── footer.php        phần cuối trang
-│   ├── product_form.php  form dùng chung cho Thêm và Sửa
-│   └── product_table.php bảng sản phẩm + ô tìm kiếm + nút xóa nhiều (dùng cho index và search)
-└── assets/
-    └── style.css         giao diện
+│   └── functions.php     json_response(), json_error(), read_json_body()
+├── index.html            trang gốc của React (Vite)
+├── vite.config.js
+├── package.json
+└── src/
+    ├── main.jsx          điểm khởi động React
+    ├── App.jsx           khai báo các route
+    ├── api.js            hàm gọi api.php, định dạng giá
+    ├── style.css         giao diện
+    ├── components/
+    │   ├── Layout.jsx      tiêu đề trang + thông báo
+    │   └── ProductForm.jsx form dùng chung cho Thêm và Sửa
+    └── pages/
+        ├── ProductList.jsx   #/            danh sách, tìm kiếm (?q=), xóa 1 / xóa nhiều
+        ├── ProductCreate.jsx #/create      thêm sản phẩm
+        └── ProductEdit.jsx   #/edit/:id    sửa sản phẩm
 ```
 
-Luồng xử lý của mỗi trang: `require lib/bootstrap.php` → gọi hàm trong `product.php`
-→ hiển thị bằng các file trong `views/`.
+## API (`api.php`)
+
+| Phương thức | URL                 | Body JSON                          | Kết quả                 |
+|-------------|---------------------|------------------------------------|-------------------------|
+| GET         | `api.php`           |                                    | danh sách sản phẩm      |
+| GET         | `api.php?q=tau`     |                                    | kết quả tìm kiếm        |
+| GET         | `api.php?id=3`      |                                    | 1 sản phẩm (404 nếu không có) |
+| POST        | `api.php`           | `{name, price, description}`       | thêm mới (201)          |
+| PUT         | `api.php?id=3`      | `{name, price, description}`       | cập nhật                |
+| DELETE      | `api.php`           | `{"ids": [1, 2]}`                  | `{"deleted": 2}`        |
+
+Lỗi trả về dạng `{"error": "..."}` (422 khi dữ liệu không hợp lệ).
 
 ## Bảng `products`
 
@@ -91,40 +137,19 @@ Lưu ý: vì id thay đổi sau khi xóa, **không** dùng `id` để liên kế
 
 ## Sao lưu dữ liệu ra `database.sql`
 
-Ghi đè `database.sql` bằng dữ liệu hiện tại trong CSDL (giữ nguyên id):
-
 ```bash
-php scripts/export_db.php
-```
-
-Khôi phục lại từ file (sẽ **xóa** bảng `products` hiện có rồi tạo lại):
-
-```bash
-sudo mysql < database.sql
-```
-
-Tóm tắt:
-
-```bash
-cd /var/www/html
 php scripts/export_db.php   # tải dữ liệu từ MySQL về file database.sql
-sudo mysql < database.sql   # nạp dữ liệu từ file database.sql vào MySQL
+sudo mysql < database.sql   # nạp dữ liệu từ file database.sql vào MySQL (XÓA bảng products cũ)
 ```
 
 ## Bảo mật
 
 - Mọi câu SQL dùng prepared statement → chống SQL injection.
-- Mọi dữ liệu in ra HTML đi qua hàm `e()` → chống XSS.
-- Xóa chỉ thực hiện qua POST, mở link `delete.php?id=...` không xóa được.
-- **Chưa có đăng nhập:** ai truy cập được trang đều thêm / sửa / xóa được.
+- React tự escape dữ liệu khi hiển thị → chống XSS.
+- Xóa chỉ thực hiện qua method DELETE của API.
+- **Chưa có đăng nhập:** ai truy cập được trang (hoặc gọi thẳng `api.php`) đều thêm / sửa / xóa được.
   Nên thêm đăng nhập hoặc giới hạn IP trước khi đưa lên internet.
-- Không commit mật khẩu CSDL trong `lib/import.php` lên kho mã công khai.
+- Không commit `config.php` (đã có trong `.gitignore`).
 - Không để file chứa mật khẩu (ví dụ file `.sql` tạo user MySQL) trong `/var/www/html`:
   Nginx cho phép tải trực tiếp mọi file không phải `.php` trong thư mục này.
-
-## Thêm một bảng mới
-
-1. Sao chép `product.php` thành `<ten>.php`, đổi tên bảng / cột / tên hàm.
-2. Thêm `require_once` file đó vào `lib/bootstrap.php`.
-3. Sao chép `index.php`, `create.php`, `edit.php`, `delete.php`, `views/product_form.php`
-   và sửa cho phù hợp.
+- Không cần đưa `src/`, `node_modules/`, `package.json` lên server — chỉ cần kết quả trong `dist/`.
