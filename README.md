@@ -3,7 +3,7 @@
 Ứng dụng web quản lý sản phẩm: đăng nhập, xem, tìm kiếm, lọc theo danh mục, phân trang,
 thêm / sửa / xóa (CRUD).
 
-- **Giao diện:** React 18 (Vite, react-router-dom) — thư mục `src/`
+- **Giao diện:** React 18 (Vite, react-router-dom) — thư mục `frontend/`, phục vụ qua `index.php`
 - **Backend:** PHP thuần (mysqli) cung cấp API JSON — thư mục `api/`
 - **Đăng nhập:** PHP Session + cookie HttpOnly; `admin` toàn quyền, `user` chỉ xem
 
@@ -34,7 +34,7 @@ xem [docs/KIEN_THUC.md](docs/KIEN_THUC.md).
 
 3. Sao chép `config.example.php` thành `config.php` và điền thông tin kết nối.
 
-4. Cài thư viện JavaScript: `npm install`
+4. Cài thư viện JavaScript: `cd frontend && npm install`
 
 **Tài khoản demo** (tạo sẵn trong `database.sql` / migration):
 
@@ -49,29 +49,31 @@ xem [docs/KIEN_THUC.md](docs/KIEN_THUC.md).
 ## Chạy khi phát triển
 
 ```bash
-php -S 127.0.0.1:8000    # cửa sổ 1: API PHP
-npm run dev              # cửa sổ 2: giao diện React
+php -S 127.0.0.1:8000              # cửa sổ 1 (thư mục gốc): API PHP
+cd frontend && npm run dev         # cửa sổ 2: giao diện React
 ```
 
 Mở **http://localhost:5173** (không mở cổng 8000 hay file `index.html` trực tiếp).
-Vite chuyển các request `api/...` sang PHP ở cổng 8000 (xem `vite.config.js`).
+Vite chuyển các request `api/...` sang PHP ở cổng 8000 (xem `frontend/vite.config.js`).
 
 ## Đưa lên server
 
 ```bash
-npm run build            # tạo dist/ (index.html + assets/)
+cd frontend && npm run build       # tạo frontend/dist/ (index.html + assets/)
 ```
 
-Chép nội dung `dist/` **cùng thư mục** với `api/` trên server:
+`index.php` ở thư mục gốc đọc `frontend/dist/index.html`, đổi đường dẫn `./assets/...`
+thành `/frontend/dist/assets/...` rồi trả về trình duyệt (không cache HTML, nên build mới
+có hiệu lực ngay).
 
-```
-/var/www/html/
-├── index.html      ← từ dist/
-├── assets/         ← từ dist/
-├── api/
-├── app/
-└── config.php
-```
+Nginx (`root /var/www/html`) chỉ mở các đường dẫn sau, còn lại trả 404:
+
+| Đường dẫn                   | Xử lý                         |
+|-----------------------------|-------------------------------|
+| `/`, `/index.php`           | PHP — trang React              |
+| `/frontend/dist/assets/*`   | file tĩnh (JS, CSS)           |
+| `/api/*.php`                | PHP — API JSON                |
+| `/adminer.php`              | PHP — quản trị CSDL (nên giới hạn IP) |
 
 Ứng dụng dùng đường dẫn dạng `#/create`, `#/edit/3` nên không cần cấu hình rewrite.
 
@@ -105,30 +107,34 @@ Chép nội dung `dist/` **cùng thư mục** với `api/` trên server:
 ├── scripts/export_db.php     xuất dữ liệu ra database.sql (dòng lệnh)
 ├── database.sql              tạo CSDL + dữ liệu mẫu
 ├── docs/KIEN_THUC.md         ghi chú kiến thức
-└── src/                      React
-    ├── main.jsx, App.jsx     khởi động, khai báo route
-    ├── services/             gọi API (không có state)
-    │   ├── http.js             fetch dùng chung, ApiError, xử lý 401
-    │   ├── productService.js
-    │   ├── categoryService.js
-    │   └── authService.js
-    ├── hooks/                custom hook (state + gọi service)
-    │   ├── useAsync.js         [dùng chung] tải dữ liệu: data / loading / error / reload
-    │   ├── useForm.js          [dùng chung] state form + handleChange + handleSubmit
-    │   ├── useSubmit.js        [dùng chung] gửi form: submitting + error
-    │   ├── useAuth.js          đọc AuthContext
-    │   ├── useProducts.js      danh sách theo bộ lọc + phân trang (dựa trên useAsync)
-    │   ├── useProduct.js       1 sản phẩm — trang Sửa (dựa trên useAsync)
-    │   ├── useCategories.js    danh mục (dựa trên useAsync)
-    │   ├── useProductFilters.js bộ lọc lưu trên URL (q, category, page, size)
-    │   ├── useSelection.js     tick chọn để xóa nhiều
-    │   └── useFlashMessage.js  thông báo giữa các trang
-    ├── context/              AuthContext + AuthProvider (state đăng nhập dùng chung)
-    ├── components/           hiển thị, nhận props
-    │   ├── Layout.jsx, Alert.jsx, Loading.jsx, ProtectedRoute.jsx
-    │   └── products/  SearchBar, CategoryFilter, ProductTable, Pagination, ProductForm
-    ├── pages/                LoginPage, ProductListPage, ProductCreatePage, ProductEditPage
-    └── utils/format.js
+├── index.php                 trả về trang React đã build (frontend/dist/index.html)
+└── frontend/                 toàn bộ giao diện React
+    ├── index.html, vite.config.js, package.json
+    ├── dist/                 bản build (npm run build) — không commit
+    └── src/
+        ├── main.jsx, App.jsx     khởi động, khai báo route
+        ├── services/             gọi API (không có state)
+        │   ├── http.js             fetch dùng chung, ApiError, xử lý 401
+        │   ├── productService.js
+        │   ├── categoryService.js
+        │   └── authService.js
+        ├── hooks/                custom hook (state + gọi service)
+        │   ├── useAsync.js         [dùng chung] tải dữ liệu: data / loading / error / reload
+        │   ├── useForm.js          [dùng chung] state form + handleChange + handleSubmit
+        │   ├── useSubmit.js        [dùng chung] gửi form: submitting + error
+        │   ├── useAuth.js          đọc AuthContext
+        │   ├── useProducts.js      danh sách theo bộ lọc + phân trang (dựa trên useAsync)
+        │   ├── useProduct.js       1 sản phẩm — trang Sửa (dựa trên useAsync)
+        │   ├── useCategories.js    danh mục (dựa trên useAsync)
+        │   ├── useProductFilters.js bộ lọc lưu trên URL (q, category, page, size)
+        │   ├── useSelection.js     tick chọn để xóa nhiều
+        │   └── useFlashMessage.js  thông báo giữa các trang
+        ├── context/              AuthContext + AuthProvider (state đăng nhập dùng chung)
+        ├── components/           hiển thị, nhận props
+        │   ├── Layout.jsx, Alert.jsx, Loading.jsx, ProtectedRoute.jsx
+        │   └── products/  SearchBar, CategoryFilter, ProductTable, Pagination, ProductForm
+        ├── pages/                LoginPage, ProductListPage, ProductCreatePage, ProductEditPage
+        └── utils/format.js
 ```
 
 Luồng React: **Page** → **Hook** → **Service** → `http.js` → PHP `api/` → **Controller** → **Repository** → MySQL.
@@ -201,5 +207,5 @@ sudo mysql < database.sql   # database.sql → MySQL (XÓA bảng products, cate
   đổi session id sau khi đăng nhập.
 - API ghi dữ liệu bắt buộc JSON → form của trang khác không giả mạo được (CSRF).
 - Quyền được kiểm tra ở **server** (`app/Auth/Auth.php`); ẩn nút trên giao diện chỉ để gọn.
-- Không commit `config.php` (đã có trong `.gitignore`). Chỉ cần đưa `dist/`, `api/`, `app/`,
-  `config.php` lên server — không cần `src/`, `node_modules/`, `migrations/`, `*.sql`.
+- Không commit `config.php` (đã có trong `.gitignore`). Chỉ cần đưa `index.php`, `frontend/dist/`, `api/`, `app/`,
+  `config.php` lên server — không cần `frontend/src/`, `frontend/node_modules/`, `migrations/`, `*.sql`.

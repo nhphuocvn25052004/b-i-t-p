@@ -16,7 +16,7 @@ Tài liệu đi kèm mã nguồn của dự án. Mỗi phần đều chỉ ra fi
 ### useState
 
 ```jsx
-const [text, setText] = useState(value);       // src/components/products/SearchBar.jsx
+const [text, setText] = useState(value);       // frontend/src/components/products/SearchBar.jsx
 <input value={text} onChange={(e) => setText(e.target.value)} />
 ```
 
@@ -60,7 +60,7 @@ sẽ có 2 bản danh sách riêng. Muốn dùng chung **một** giá trị thì
 ## 2. Cấu trúc thư mục React
 
 ```
-src/
+frontend/src/
 ├── services/    gọi API, không chứa state, không biết gì về React
 ├── hooks/       custom hook: state + effect + gọi service, trả dữ liệu cho component
 ├── context/     state dùng chung toàn ứng dụng (đăng nhập)
@@ -177,8 +177,8 @@ React (trình duyệt)                                PHP (server)
 
 File liên quan:
 - PHP: `api/auth.php`, `app/Controllers/AuthController.php`, `app/Auth/Auth.php`, `app/Repositories/UserRepository.php`
-- React: `src/services/authService.js`, `src/services/http.js`, `src/context/AuthProvider.jsx`,
-  `src/hooks/useAuth.js`, `src/components/ProtectedRoute.jsx`, `src/pages/LoginPage.jsx`
+- React: `frontend/src/services/authService.js`, `frontend/src/services/http.js`, `frontend/src/context/AuthProvider.jsx`,
+  `frontend/src/hooks/useAuth.js`, `frontend/src/components/ProtectedRoute.jsx`, `frontend/src/pages/LoginPage.jsx`
 
 ### Các lớp bảo vệ đã có
 - Mật khẩu lưu bằng `password_hash` (bcrypt), so sánh bằng `password_verify`.
