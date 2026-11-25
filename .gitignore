@@ -3,3 +3,8 @@ config.php
 adminer.php
 frontend/node_modules/
 frontend/dist/
+
+# Archify: chỉ giữ sơ đồ (.html) và candidate.json, bỏ receipt kiểm tra
+.archify/**/*.json
+!.archify/**/candidate.json
+.archify/**/review-*/

@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Product Manager — React SPA + PHP JSON API",
+    "locale": "en",
+    "output": ".archify/architecture-repo-overview-20261125-041926/repo-overview.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/nhphuocvn25052004/b-i-t-p.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "98ad1e7fb17ed312ef85eb3f8769b99032731e8e"
+    },
+    "views": [
+      { "id": "api-flow", "label": "API request flow", "focus": ["spa", "api", "controllers", "validator", "repos", "db", "mysql"], "note": "fetch api/*.php → controller → repository → prepared SQL on MySQL" },
+      { "id": "login-flow", "label": "Login / session", "focus": ["spa", "api", "controllers", "auth", "session", "repos", "mysql"], "note": "POST ?action=login → password_verify → $_SESSION['user'] + HttpOnly cookie" },
+      { "id": "authz", "label": "Authorization gates", "focus": ["spa", "controllers", "auth", "session"], "note": "ProtectedRoute hides UI; requireLogin (401) / requireRole admin (403) enforce on server" }
+    ]
+  },
+  "layout": { "mode": "auto" },
+  "components": [
+    {
+      "id": "user", "type": "external", "label": "User", "sublabel": "browser · admin or user role", "icon": "person"
+    },
+    {
+      "id": "spa", "type": "frontend", "label": "React SPA", "sublabel": "HashRouter · AuthProvider · services", "tag": "frontend/src",
+      "explanation": "Vite-built React app. AuthProvider calls GET api/auth.php on load to restore the session user. ProtectedRoute redirects to /login when no user and back to / when the role does not match (admin-only /create and /edit/:id). This is UI hiding only; the real checks are on the server. http.js sends the session cookie (credentials: same-origin) and calls the unauthorized handler on any 401, which clears the user.",
+      "sources": [
+        { "path": "frontend/src/App.jsx", "line": 8, "end_line": 23, "label": "routes + role guards" },
+        { "path": "frontend/src/services/http.js", "line": 29, "end_line": 57, "label": "fetch wrapper, 401 hook" },
+        { "path": "frontend/src/context/AuthProvider.jsx", "line": 8, "end_line": 44, "label": "auth state" }
+      ]
+    },
+    {
+      "id": "shell", "type": "backend", "label": "index.php", "sublabel": "serves frontend/dist/index.html", "tag": "503 if not built",
+      "sources": [ { "path": "index.php", "line": 6, "end_line": 23 } ]
+    },
+    {
+      "id": "api", "type": "backend", "label": "API entry points", "sublabel": "api/{auth,products,categories}.php", "tag": "bootstrap + App DI",
+      "explanation": "Each endpoint file requires app/bootstrap.php, which installs a JSON 500 exception handler, opens the Database from config.php, and builds the App container that lazily wires repositories, validator and Auth.",
+      "sources": [
+        { "path": "api/products.php", "line": 1, "end_line": 7 },
+        { "path": "app/bootstrap.php", "line": 1, "end_line": 24 },
+        { "path": "app/Core/App.php", "line": 20, "end_line": 88 }
+      ]
+    },
+    {
+      "id": "controllers", "type": "backend", "label": "Controllers", "sublabel": "Auth · Product · Category", "tag": "Request → JsonResponse",
+      "explanation": "AuthController: GET me, POST ?action=login|logout. ProductController: GET list/show (login), POST/PUT/DELETE (admin). CategoryController: GET list (login). Bodies must be application/json (415 otherwise), which also acts as a CSRF guard.",
+      "sources": [
+        { "path": "app/Controllers/AuthController.php", "line": 30, "end_line": 71 },
+        { "path": "app/Controllers/ProductController.php", "line": 42, "end_line": 103 },
+        { "path": "app/Controllers/CategoryController.php", "line": 32, "end_line": 44 }
+      ]
+    },
+    {
+      "id": "auth", "type": "security", "label": "Auth", "sublabel": "session login · requireLogin · requireRole", "tag": "401 / 403",
+      "explanation": "attempt() looks the user up via UserRepository and checks password_verify against the bcrypt hash; on success it regenerates the session id and stores {id, username, role} in $_SESSION. requireLogin() returns 401 without a session user; requireRole('admin') returns 403 for other roles. Cookie BITP_SESSION is HttpOnly, SameSite=Lax, Secure when HTTPS.",
+      "sources": [
+        { "path": "app/Auth/Auth.php", "line": 37, "end_line": 91, "label": "verify, login, logout" },
+        { "path": "app/Auth/Auth.php", "line": 93, "end_line": 134, "label": "gates + cookie options" }
+      ]
+    },
+    {
+      "id": "session", "type": "database", "label": "PHP session", "sublabel": "$_SESSION['user'] · cookie BITP_SESSION", "tag": "default handler",
+      "sources": [ { "path": "app/Auth/Auth.php", "line": 69, "end_line": 91 } ]
+    },
+    {
+      "id": "validator", "type": "backend", "label": "ProductValidator", "sublabel": "name ≤255 · price range · category", "tag": "422 on error",
+      "sources": [ { "path": "app/Validators/ProductValidator.php", "line": 30, "end_line": 67 } ]
+    },
+    {
+      "id": "repos", "type": "backend", "label": "Repositories", "sublabel": "Product · Category · User",
+      "explanation": "ProductRepository: paginate with search/category filter, find, create (MAX(id)+1), update, deleteMany in a transaction that shifts later ids down. CategoryRepository: list with product counts, exists. UserRepository: findByUsername (includes password_hash, never returned by the API).",
+      "sources": [
+        { "path": "app/Repositories/ProductRepository.php", "line": 40, "end_line": 125 },
+        { "path": "app/Repositories/CategoryRepository.php", "line": 18, "end_line": 32 },
+        { "path": "app/Repositories/UserRepository.php", "line": 23, "end_line": 36 }
+      ]
+    },
+    {
+      "id": "db", "type": "backend", "label": "Database", "sublabel": "mysqli prepared stmts · transactions", "tag": "config.php",
+      "sources": [ { "path": "app/Core/Database.php", "line": 27, "end_line": 99 } ]
+    },
+    {
+      "id": "mysql", "type": "database", "label": "MySQL website_db", "sublabel": "products · categories · users",
+      "sources": [
+        { "path": "database.sql", "line": 15, "end_line": 36 },
+        { "path": "config.example.php", "line": 3, "end_line": 9 }
+      ]
+    },
+    {
+      "id": "exporter", "type": "backend", "label": "export_db.php (CLI)", "sublabel": "DatabaseExporter → database.sql", "tag": "dev only",
+      "sources": [
+        { "path": "scripts/export_db.php", "line": 6, "end_line": 31 },
+        { "path": "app/Services/DatabaseExporter.php", "line": 33, "end_line": 46 }
+      ]
+    }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Browser", "wraps": ["spa"] },
+    { "kind": "region", "label": "PHP web server (same origin)", "wraps": ["shell", "api", "controllers", "auth", "session", "validator", "repos", "db"] }
+  ],
+  "connections": [
+    { "id": "user-spa", "from": "user", "to": "spa", "label": "uses UI" },
+    { "id": "spa-shell", "from": "spa", "to": "shell", "label": "GET / page load", "variant": "dashed" },
+    { "id": "spa-api", "from": "spa", "to": "api", "label": "fetch JSON + cookie", "variant": "emphasis" },
+    { "id": "api-ctrl", "from": "api", "to": "controllers", "label": "dispatch", "variant": "emphasis" },
+    { "id": "ctrl-auth", "from": "controllers", "to": "auth", "label": "login / require*", "variant": "security" },
+    { "id": "auth-session", "from": "auth", "to": "session", "label": "read / write user", "variant": "security" },
+    { "id": "auth-repos", "from": "auth", "to": "repos", "label": "findByUsername", "variant": "security" },
+    { "id": "ctrl-validator", "from": "controllers", "to": "validator", "label": "POST / PUT body" },
+    { "id": "validator-repos", "from": "validator", "to": "repos", "label": "category exists" },
+    { "id": "ctrl-repos", "from": "controllers", "to": "repos", "label": "CRUD", "variant": "emphasis" },
+    { "id": "repos-db", "from": "repos", "to": "db", "label": "SQL + params", "variant": "emphasis" },
+    { "id": "db-mysql", "from": "db", "to": "mysql", "label": "mysqli :3306", "variant": "emphasis" },
+    { "id": "exporter-mysql", "from": "exporter", "to": "mysql", "label": "SELECT via Database", "variant": "dashed" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "API endpoints", "items": [
+      "GET/POST api/auth.php (?action=login|logout)",
+      "GET api/products.php (list, ?id=) — login",
+      "POST / PUT / DELETE api/products.php — admin",
+      "GET api/categories.php — login"
+    ] },
+    { "dot": "rose", "title": "Auth flow", "items": [
+      "Login: password_verify(bcrypt) → session_regenerate_id → $_SESSION['user']",
+      "Cookie BITP_SESSION: HttpOnly, SameSite=Lax, Secure on HTTPS",
+      "Any 401 → http.js handler → AuthProvider clears user → /login",
+      "ProtectedRoute only hides UI; server gates are authoritative"
+    ] },
+    { "dot": "slate", "title": "Not present", "items": [
+      "No external/third-party services, queues or caches in source",
+      "Dev only: Vite proxies /api to php -S 127.0.0.1:8000"
+    ] }
+  ]
+}
