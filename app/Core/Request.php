@@ -44,6 +44,12 @@ class Request
         return strtoupper($this->server['REQUEST_METHOD'] ?? 'GET');
     }
 
+    // Địa chỉ IP của trình duyệt (dùng để giới hạn số lần nhập sai mật khẩu)
+    public function ip(): string
+    {
+        return (string)($this->server['REMOTE_ADDR'] ?? '');
+    }
+
     // Tham số chuỗi từ query string (?key=...), đã bỏ khoảng trắng 2 đầu
     public function query(string $key, string $default = ''): string
     {

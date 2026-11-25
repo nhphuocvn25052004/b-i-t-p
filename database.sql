@@ -32,7 +32,17 @@ CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
-    role ENUM('admin', 'user') NOT NULL DEFAULT 'user'
+    role ENUM('admin', 'user') NOT NULL DEFAULT 'user',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS login_attempts (
+    username VARCHAR(50) NOT NULL,
+    ip VARCHAR(45) NOT NULL,
+    failures INT UNSIGNED NOT NULL DEFAULT 0,
+    locked_until DATETIME NULL,
+    last_failed_at DATETIME NOT NULL,
+    PRIMARY KEY (username, ip)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Tài khoản demo: admin / admin123 (toàn quyền), user / user123 (chỉ xem). ĐỔI MẬT KHẨU khi dùng thật.

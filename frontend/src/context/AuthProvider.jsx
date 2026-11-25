@@ -35,9 +35,16 @@ export default function AuthProvider({ children }) {
     }
   }, []);
 
+  // Đăng ký xong server đăng nhập luôn → cập nhật user như khi đăng nhập
+  const register = useCallback(async (username, password) => {
+    const data = await authService.register(username, password);
+    setUser(data.user);
+    return data.user;
+  }, []);
+
   const value = useMemo(
-    () => ({ user, loading, isAdmin: user?.role === 'admin', login, logout }),
-    [user, loading, login, logout]
+    () => ({ user, loading, isAdmin: user?.role === 'admin', login, logout, register }),
+    [user, loading, login, logout, register]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

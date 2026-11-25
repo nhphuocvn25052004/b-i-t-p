@@ -21,5 +21,5 @@ export function useSubmit(action) {
     }
   }, [action]);
 
-  return { submit, submitting, error };
+  return { submit, submitting, error, setError };
 }

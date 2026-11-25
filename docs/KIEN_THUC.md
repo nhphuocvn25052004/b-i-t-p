@@ -87,8 +87,9 @@ Phân quyền trong dự án:
 
 | Thao tác | Khách | `user` | `admin` |
 |---|---|---|---|
-| Xem, tìm kiếm, lọc, phân trang | ✗ (401) | ✓ | ✓ |
-| Thêm, sửa, xóa | ✗ (401) | ✗ (403) | ✓ |
+| Đăng ký tài khoản | ✓ | — | — |
+| Xem, tìm kiếm, lọc, phân trang, đổi mật khẩu | ✗ (401) | ✓ | ✓ |
+| Thêm, sửa, xóa sản phẩm; quản lý người dùng | ✗ (401) | ✗ (403) | ✓ |
 
 **Quan trọng:** ẩn nút "Thêm/Sửa/Xóa" và `ProtectedRoute` ở React **chỉ để giao diện gọn**.
 Ai cũng có thể mở DevTools hoặc dùng `curl` gọi thẳng API, nên **mọi kiểm tra quyền phải làm ở server**.
@@ -186,8 +187,13 @@ File liên quan:
 - Cookie `HttpOnly` + `SameSite=Lax`; API ghi dữ liệu bắt buộc `Content-Type: application/json`
   (form HTML của trang khác không gửi được) → chống CSRF.
 - Báo lỗi chung "Sai tên đăng nhập hoặc mật khẩu" → không lộ tên đăng nhập nào tồn tại.
+- Giới hạn số lần nhập sai (`app/Auth/LoginThrottle.php`): sai 3 lần → chờ 30 giây, mỗi lần sai
+  tiếp theo thời gian chờ nhân đôi (tối đa 1 giờ). Server trả **429 Too Many Requests**.
+  Đếm theo cặp (tên đăng nhập, IP) để người dò từ máy khác không khóa được tài khoản của bạn.
+- Session chỉ giữ id user + "dấu" của mật khẩu; mỗi request đọc lại tài khoản từ CSDL
+  → bị xóa / đổi vai trò có hiệu lực ngay, đổi mật khẩu thì các phiên khác bị đăng xuất.
 
 ### Nên làm thêm khi dùng thật
 - Chạy HTTPS (cookie tự bật cờ `Secure`).
-- Giới hạn số lần đăng nhập sai (chống dò mật khẩu).
 - Đổi mật khẩu 2 tài khoản demo, hoặc xóa đi.
+- Giới hạn số tài khoản đăng ký từ 1 IP (chống tạo tài khoản rác), hoặc thêm CAPTCHA.

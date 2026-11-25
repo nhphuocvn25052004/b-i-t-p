@@ -1,11 +1,12 @@
 # Quản lý sản phẩm (React + PHP + MySQL)
 
-Ứng dụng web quản lý sản phẩm: đăng nhập, xem, tìm kiếm, lọc theo danh mục, phân trang,
-thêm / sửa / xóa (CRUD).
+Ứng dụng web quản lý sản phẩm: đăng nhập / đăng ký / đổi mật khẩu, xem, tìm kiếm, lọc theo
+danh mục, phân trang, thêm / sửa / xóa (CRUD), quản lý người dùng.
 
 - **Giao diện:** React 18 (Vite, react-router-dom) — thư mục `frontend/`, phục vụ qua `index.php`
 - **Backend:** PHP thuần (mysqli) cung cấp API JSON — thư mục `api/`
-- **Đăng nhập:** PHP Session + cookie HttpOnly; `admin` toàn quyền, `user` chỉ xem
+- **Đăng nhập:** PHP Session + cookie HttpOnly; `admin` toàn quyền, `user` chỉ xem.
+  Tự đăng ký (vai trò `user`), đổi mật khẩu, khóa tạm khi nhập sai mật khẩu quá 3 lần
 
 Kiến thức nền (State/Props, Authentication/Authorization, Cookie/Session/JWT, luồng đăng nhập):
 xem [docs/KIEN_THUC.md](docs/KIEN_THUC.md).
@@ -22,8 +23,10 @@ xem [docs/KIEN_THUC.md](docs/KIEN_THUC.md).
 1. Tạo CSDL:
 
    - **CSDL mới:** `mysql -u root -p < database.sql`
-   - **CSDL cũ đã có dữ liệu** (bản trước chưa có danh mục / đăng nhập), giữ nguyên dữ liệu:
-     `mysql -u root -p < migrations/001_categories_users.sql`
+   - **CSDL cũ đã có dữ liệu**, giữ nguyên dữ liệu — chạy lần lượt các migration chưa chạy:
+     - bản chưa có danh mục / đăng nhập: `mysql -u root -p < migrations/001_categories_users.sql`
+     - bản chưa có chống dò mật khẩu / ngày tạo tài khoản:
+       `mysql -u root -p < migrations/002_login_attempts_user_created_at.sql`
 
 2. Tạo user MySQL cho web và cấp quyền trên `website_db`:
 
@@ -43,8 +46,14 @@ xem [docs/KIEN_THUC.md](docs/KIEN_THUC.md).
 | `admin`       | `admin123` | xem, thêm, sửa, xóa      |
 | `user`        | `user123`  | chỉ xem / tìm / lọc      |
 
-Đổi mật khẩu hoặc xóa các tài khoản này trước khi đưa lên internet. Tạo hash mật khẩu mới:
-`php -r "echo password_hash('mat_khau_moi', PASSWORD_DEFAULT);"` rồi `UPDATE users SET password_hash = '...'`.
+Đổi mật khẩu (menu **Đổi mật khẩu**) hoặc xóa các tài khoản này (menu **Người dùng**)
+trước khi đưa lên internet.
+
+**Quy tắc tài khoản** (kiểm tra ở cả React và PHP):
+
+- Tên đăng nhập: 3–50 ký tự, chỉ chữ không dấu, số, `_`.
+- Mật khẩu: 6–72 ký tự, chỉ chữ **không dấu**, số và ký hiệu bàn phím (`!@#$...`);
+  không có chữ có dấu (`á`, `ư`, `ô`...) hay khoảng trắng.
 
 ## Chạy khi phát triển
 
@@ -82,6 +91,7 @@ Nginx (`root /var/www/html`) chỉ mở các đường dẫn sau, còn lại tr�
 ```
 ├── api/                      điểm vào API — mỗi file chỉ tạo controller rồi gọi handle()
 │   ├── auth.php              → AuthController
+│   ├── users.php             → UserController (chỉ admin)
 │   ├── products.php          → ProductController
 │   └── categories.php        → CategoryController
 ├── app/                      backend PHP hướng đối tượng, namespace App\ (PSR-4)
@@ -92,16 +102,22 @@ Nginx (`root /var/www/html`) chỉ mở các đường dẫn sau, còn lại tr�
 │   │   ├── Database.php      bọc mysqli: query() prepared statement, transaction()
 │   │   ├── Request.php       method, query string, body JSON (bắt buộc Content-Type JSON)
 │   │   └── JsonResponse.php  trả JSON / lỗi {"error": "..."}
-│   ├── Auth/Auth.php         đăng nhập, session, requireLogin() (401), requireRole() (403)
+│   ├── Auth/
+│   │   ├── Auth.php          đăng nhập, session, đổi mật khẩu, requireLogin() (401), requireRole() (403)
+│   │   └── LoginThrottle.php chống dò mật khẩu: sai 3 lần → khóa tạm, sai càng nhiều chờ càng lâu (429)
 │   ├── Controllers/          nhận request, kiểm tra quyền, gọi repository, trả JSON
-│   │   ├── AuthController.php
+│   │   ├── AuthController.php      đăng nhập / đăng xuất / đăng ký / đổi mật khẩu
+│   │   ├── UserController.php      quản lý người dùng (admin)
 │   │   ├── ProductController.php
 │   │   └── CategoryController.php
 │   ├── Repositories/         mọi câu SQL
 │   │   ├── ProductRepository.php
 │   │   ├── CategoryRepository.php
-│   │   └── UserRepository.php
-│   ├── Validators/ProductValidator.php   kiểm tra dữ liệu sản phẩm (lỗi → 422)
+│   │   ├── UserRepository.php
+│   │   └── LoginAttemptRepository.php   bảng login_attempts
+│   ├── Validators/
+│   │   ├── ProductValidator.php    kiểm tra dữ liệu sản phẩm (lỗi → 422)
+│   │   └── UserValidator.php       tên đăng nhập, mật khẩu (không dấu), vai trò
 │   └── Services/DatabaseExporter.php     tạo nội dung database.sql (dùng bởi scripts/export_db.php)
 ├── migrations/               nâng cấp CSDL cũ, không mất dữ liệu
 ├── scripts/export_db.php     xuất dữ liệu ra database.sql (dòng lệnh)
@@ -117,7 +133,8 @@ Nginx (`root /var/www/html`) chỉ mở các đường dẫn sau, còn lại tr�
         │   ├── http.js             fetch dùng chung, ApiError, xử lý 401
         │   ├── productService.js
         │   ├── categoryService.js
-        │   └── authService.js
+        │   ├── authService.js      đăng nhập, đăng ký, đổi mật khẩu
+        │   └── userService.js      quản lý người dùng (admin)
         ├── hooks/                custom hook (state + gọi service)
         │   ├── useAsync.js         [dùng chung] tải dữ liệu: data / loading / error / reload
         │   ├── useForm.js          [dùng chung] state form + handleChange + handleSubmit
@@ -128,13 +145,18 @@ Nginx (`root /var/www/html`) chỉ mở các đường dẫn sau, còn lại tr�
         │   ├── useCategories.js    danh mục (dựa trên useAsync)
         │   ├── useProductFilters.js bộ lọc lưu trên URL (q, category, page, size)
         │   ├── useSelection.js     tick chọn để xóa nhiều
-        │   └── useFlashMessage.js  thông báo giữa các trang
+        │   ├── useFlashMessage.js  thông báo giữa các trang
+        │   ├── useLockout.js       đếm ngược khi bị khóa vì nhập sai mật khẩu (429)
+        │   └── useUsers.js         danh sách tài khoản (dựa trên useAsync)
         ├── context/              AuthContext + AuthProvider (state đăng nhập dùng chung)
         ├── components/           hiển thị, nhận props
         │   ├── Layout.jsx, Alert.jsx, Loading.jsx, ProtectedRoute.jsx
-        │   └── products/  SearchBar, CategoryFilter, ProductTable, Pagination, ProductForm
-        ├── pages/                LoginPage, ProductListPage, ProductCreatePage, ProductEditPage
-        └── utils/format.js
+        │   ├── PasswordField.jsx   ô mật khẩu, báo ngay khi gõ chữ có dấu
+        │   ├── products/  SearchBar, CategoryFilter, ProductTable, Pagination, ProductForm
+        │   └── users/     UserForm, UserTable, roles.js
+        ├── pages/                LoginPage, RegisterPage, ChangePasswordPage, UserListPage,
+        │                         ProductListPage, ProductCreatePage, ProductEditPage
+        └── utils/                format.js, validation.js (quy tắc tên đăng nhập / mật khẩu)
 ```
 
 Luồng React: **Page** → **Hook** → **Service** → `http.js` → PHP `api/` → **Controller** → **Repository** → MySQL.
@@ -147,8 +169,14 @@ Mọi API trả JSON; lỗi có dạng `{"error": "..."}`. Request có body ph�
 | Phương thức | URL                                                      | Quyền    | Kết quả |
 |-------------|----------------------------------------------------------|----------|---------|
 | GET         | `api/auth.php`                                           | —        | `{"user": {...} \| null}` |
-| POST        | `api/auth.php?action=login` `{username, password}`       | —        | `{"user": {...}}`, sai → 401 |
+| POST        | `api/auth.php?action=login` `{username, password}`       | —        | `{"user": {...}}`, sai → 401, sai quá 3 lần → 429 |
 | POST        | `api/auth.php?action=logout`                             | —        | `{"ok": true}` |
+| POST        | `api/auth.php?action=register` `{username, password}`    | —        | `{"user": {...}}` (201, đăng nhập luôn), trùng tên → 409 |
+| POST        | `api/auth.php?action=change_password` `{current_password, new_password}` | đăng nhập | `{"ok": true}`, sai mật khẩu hiện tại → 422 / 429 |
+| GET         | `api/users.php`                                          | admin    | `[{id, username, role, created_at}]` |
+| POST        | `api/users.php` `{username, password, role}`             | admin    | tạo tài khoản (201), trùng tên → 409 |
+| PUT         | `api/users.php?id=3` `{role}`                            | admin    | đổi vai trò (không đổi được chính mình) |
+| DELETE      | `api/users.php?id=3`                                     | admin    | xóa tài khoản (không xóa được chính mình) |
 | GET         | `api/categories.php`                                     | đăng nhập | `[{id, name, product_count}]` |
 | GET         | `api/products.php?q=&category=&page=1&per_page=10`       | đăng nhập | `{items, total, page, per_page, total_pages}` |
 | GET         | `api/products.php?id=3`                                  | đăng nhập | 1 sản phẩm, không có → 404 |
@@ -158,7 +186,9 @@ Mọi API trả JSON; lỗi có dạng `{"error": "..."}`. Request có body ph�
 
 `category`: bỏ trống = tất cả, `none` = chưa phân loại, số = id danh mục.
 `page` vượt quá số trang thì trả về trang cuối. `per_page` tối đa 100.
-Mã lỗi: 401 chưa đăng nhập, 403 không đủ quyền, 404 không tìm thấy, 422 dữ liệu không hợp lệ.
+Mã lỗi: 401 chưa đăng nhập, 403 không đủ quyền, 404 không tìm thấy, 409 trùng tên đăng nhập,
+422 dữ liệu không hợp lệ, 429 nhập sai mật khẩu quá nhiều lần (`{"error", "retry_after": số_giây}`
+và header `Retry-After`).
 
 ## CSDL
 
@@ -174,7 +204,23 @@ Mã lỗi: 401 chưa đăng nhập, 403 không đủ quyền, 404 không tìm th
 | `description` | TEXT          | Không bắt buộc                                |
 | `category_id` | INT NULL      | Khóa ngoại → `categories.id`; xóa danh mục thì về NULL |
 
-**`users`**: `id`, `username` (duy nhất), `password_hash` (bcrypt), `role` (`admin` / `user`)
+**`users`**: `id`, `username` (duy nhất), `password_hash` (bcrypt), `role` (`admin` / `user`), `created_at`
+
+**`login_attempts`**: số lần nhập sai mật khẩu liên tiếp theo cặp (`username`, `ip`) — `failures`,
+`locked_until`, `last_failed_at`. Đăng nhập đúng thì xóa dòng tương ứng.
+
+## Chống dò mật khẩu
+
+Sai mật khẩu (khi đăng nhập hoặc ở ô "mật khẩu hiện tại" khi đổi mật khẩu) được đếm theo cặp
+(tên đăng nhập, IP). Được sai 3 lần, sau đó phải chờ; sai càng nhiều chờ càng lâu:
+
+| Lần sai thứ | 1–2 | 3      | 4      | 5      | 6      | 7      | 8       | 9       | 10+     |
+|-------------|-----|--------|--------|--------|--------|--------|---------|---------|---------|
+| Phải chờ    | —   | 30 giây | 1 phút | 2 phút | 4 phút | 8 phút | 16 phút | 32 phút | 60 phút |
+
+Đang bị khóa thì nhập đúng mật khẩu cũng phải chờ. Đăng nhập đúng → đếm lại từ đầu;
+24 giờ không sai lần nào → cũng đếm lại. Giao diện hiện đồng hồ đếm ngược và khóa nút Đăng nhập.
+Thông số nằm ở đầu `app/Auth/LoginThrottle.php`.
 
 ### Cách đánh số `id` sản phẩm
 
@@ -205,6 +251,11 @@ sudo mysql < database.sql   # database.sql → MySQL (XÓA bảng products, cate
 - React tự escape khi hiển thị → chống XSS.
 - Mật khẩu băm bằng `password_hash`; cookie phiên `HttpOnly`, `SameSite=Lax`;
   đổi session id sau khi đăng nhập.
+- Nhập sai mật khẩu quá 3 lần → khóa tạm, thời gian chờ tăng dần (xem "Chống dò mật khẩu").
+- Session chỉ lưu id user; mỗi request đọc lại tài khoản từ CSDL → admin đổi vai trò / xóa tài khoản
+  có hiệu lực ngay; đổi mật khẩu thì các phiên đăng nhập khác bị đăng xuất.
+- Tự đăng ký chỉ tạo được vai trò `user`; admin không đổi vai trò / xóa được chính mình
+  (luôn còn ít nhất 1 admin).
 - API ghi dữ liệu bắt buộc JSON → form của trang khác không giả mạo được (CSRF).
 - Quyền được kiểm tra ở **server** (`app/Auth/Auth.php`); ẩn nút trên giao diện chỉ để gọn.
 - Không commit `config.php` (đã có trong `.gitignore`). Chỉ cần đưa `index.php`, `frontend/dist/`, `api/`, `app/`,

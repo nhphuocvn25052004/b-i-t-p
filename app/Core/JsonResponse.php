@@ -38,8 +38,12 @@ class JsonResponse
         (new self($data, $status))->emit();
     }
 
-    public static function error(string $message, int $status = 400): void
+    /**
+     * Lỗi dạng {"error": "...", ...$extra}
+     * @param array $extra trường bổ sung, vd ['retry_after' => 30]
+     */
+    public static function error(string $message, int $status = 400, array $extra = []): void
     {
-        self::send(['error' => $message], $status);
+        self::send(['error' => $message] + $extra, $status);
     }
 }

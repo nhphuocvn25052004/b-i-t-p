@@ -17,6 +17,9 @@ use Throwable;
  */
 class Database
 {
+    // Mã lỗi MySQL khi trùng khóa UNIQUE / PRIMARY KEY
+    public const ERR_DUPLICATE = 1062;
+
     /** @var mysqli */
     private $conn;
 

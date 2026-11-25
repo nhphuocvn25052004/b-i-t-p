@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth.js';
 // Bảo vệ route phía giao diện:
 //   - chưa đăng nhập  → chuyển tới /login (Authentication)
 //   - sai vai trò     → về trang chủ kèm thông báo (Authorization)
-// Lưu ý: đây chỉ để ẩn giao diện. Kiểm tra quyền THẬT nằm ở server (lib/auth.php).
+// Lưu ý: đây chỉ để ẩn giao diện. Kiểm tra quyền THẬT nằm ở server (app/Auth/Auth.php).
 export default function ProtectedRoute({ role, children }) {
   const { user, loading } = useAuth();
   const location = useLocation();

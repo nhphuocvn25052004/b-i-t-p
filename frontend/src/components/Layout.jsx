@@ -1,13 +1,12 @@
 import { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 import Alert from './Alert.jsx';
+import { ROLE_LABEL } from './users/roles.js';
 import { useAuth } from '../hooks/useAuth.js';
 
-const ROLE_LABEL = { admin: 'Quản trị', user: 'Người dùng' };
-
-// Khung trang: thanh trên cùng (user + đăng xuất), tiêu đề, thông báo
+// Khung trang: thanh trên cùng (menu, user, đăng xuất), tiêu đề, thông báo
 export default function Layout({ title, msg, error, children }) {
-  const { user, logout } = useAuth();
+  const { user, isAdmin, logout } = useAuth();
 
   useEffect(() => {
     document.title = title;
@@ -18,6 +17,10 @@ export default function Layout({ title, msg, error, children }) {
       {user && (
         <header className="topbar">
           <Link to="/" className="brand">Quản lý sản phẩm</Link>
+          <nav className="menu">
+            {isAdmin && <NavLink to="/users">Người dùng</NavLink>}
+            <NavLink to="/account/password">Đổi mật khẩu</NavLink>
+          </nav>
           <span className="who">
             {user.username} <span className={`role role-${user.role}`}>{ROLE_LABEL[user.role] ?? user.role}</span>
           </span>

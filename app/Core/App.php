@@ -2,10 +2,13 @@
 namespace App\Core;
 
 use App\Auth\Auth;
+use App\Auth\LoginThrottle;
 use App\Repositories\CategoryRepository;
+use App\Repositories\LoginAttemptRepository;
 use App\Repositories\ProductRepository;
 use App\Repositories\UserRepository;
 use App\Validators\ProductValidator;
+use App\Validators\UserValidator;
 
 /**
  * Nơi DUY NHẤT tạo các đối tượng dùng chung và nối chúng với nhau (ai cần ai).
@@ -70,10 +73,24 @@ class App
         });
     }
 
+    public function userValidator(): UserValidator
+    {
+        return $this->once('userValidator', function () {
+            return new UserValidator();
+        });
+    }
+
     public function auth(): Auth
     {
         return $this->once('auth', function () {
             return new Auth($this->users());
+        });
+    }
+
+    public function loginThrottle(): LoginThrottle
+    {
+        return $this->once('loginThrottle', function () {
+            return new LoginThrottle(new LoginAttemptRepository($this->database));
         });
     }
 

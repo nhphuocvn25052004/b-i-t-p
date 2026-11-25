@@ -1,12 +1,14 @@
 // Lớp gọi HTTP dùng chung cho mọi service.
 // - Tự gửi cookie phiên đăng nhập (credentials: 'same-origin')
-// - Lỗi từ server ({"error": "..."}) được ném ra dưới dạng ApiError kèm mã HTTP
+// - Lỗi từ server ({"error": "...", ...}) được ném ra dưới dạng ApiError kèm mã HTTP
+//   và toàn bộ body (err.data, vd err.data.retry_after khi bị khóa vì nhập sai nhiều lần)
 // - Gặp 401 (hết phiên / chưa đăng nhập) thì báo cho AuthProvider để đưa về trang đăng nhập
 
 export class ApiError extends Error {
-  constructor(message, status) {
+  constructor(message, status, data = null) {
     super(message);
     this.status = status;
+    this.data = data;
   }
 }
 
@@ -51,7 +53,7 @@ export async function http(url, { method = 'GET', params, body } = {}) {
 
   if (!res.ok) {
     if (res.status === 401 && unauthorizedHandler) unauthorizedHandler();
-    throw new ApiError(data?.error || `Lỗi máy chủ (${res.status}).`, res.status);
+    throw new ApiError(data?.error || `Lỗi máy chủ (${res.status}).`, res.status, data);
   }
   return data;
 }
