@@ -42,6 +42,38 @@ function decompose(ch) {
   return { keys, tone };
 }
 
+// Các phím Telex để gõ ra $text, theo từng chữ: 'á' → ['a', 's'], 'ươ' → ['u', 'w', 'o', 'w']
+function telexKeys(text) {
+  return [...text].flatMap((ch) => {
+    const { keys, tone } = decompose(ch);
+    return [...keys, ...(tone ? [tone] : [])];
+  });
+}
+
+/**
+ * Bộ gõ vừa sửa $before thành $after sau MỘT lần bấm phím — phím đó là gì?
+ *   'a'     → 'á'      : 's'   (thêm dấu sắc)
+ *   'tiêng' → 'tiếng'  : 's'
+ *   'tie'   → 'tiê'    : 'e'
+ *   'uo'    → 'ươ'     : 'w'   (1 phím w thêm móc cho cả 2 chữ)
+ *   'á'     → 'as'     : 's'   (gõ s lần nữa để bỏ dấu)
+ */
+export function pressedKey(before, after) {
+  const remaining = {};
+  telexKeys(before).forEach((k) => {
+    const key = k.toLowerCase();
+    remaining[key] = (remaining[key] ?? 0) + 1;
+  });
+  const afterKeys = telexKeys(after);
+  for (const k of afterKeys) {
+    const key = k.toLowerCase();
+    if (!remaining[key]) return k;
+    remaining[key] -= 1;
+  }
+  // Không có phím mới (bỏ dấu: á + s → as, â + a → aa): phím vừa bấm là chữ cuối
+  return afterKeys[afterKeys.length - 1] ?? '';
+}
+
 export function untelex(text) {
   const parts = [...text].map(decompose);
   let out = '';

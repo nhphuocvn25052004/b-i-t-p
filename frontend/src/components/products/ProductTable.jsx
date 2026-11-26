@@ -4,20 +4,24 @@ import { formatPrice } from '../../utils/format.js';
 // Bảng sản phẩm — chỉ hiển thị, mọi thao tác báo ngược lên trang cha qua props callback.
 // Props:
 //   products, loading, emptyText
-//   canEdit      true = hiện cột chọn + nút Sửa / Xóa (chỉ admin)
+//   Cột ID hiện p.seq — số thứ tự 1..n trong danh sách của người đang xem (server tính);
+//   id thật (p.id) chỉ dùng cho link Sửa và chọn để xóa.
+//   canUpdate    true = hiện nút Sửa (quyền products.update)
+//   canDelete    true = hiện cột chọn + nút Xóa (quyền products.delete)
 //   selected     Set các id đang tick, allChecked
 //   onToggle(id), onToggleAll(checked), onDelete(product)
 export default function ProductTable({
-  products, loading, emptyText, canEdit,
+  products, loading, emptyText, canUpdate, canDelete,
   selected, allChecked, onToggle, onToggleAll, onDelete,
 }) {
-  const columns = canEdit ? 7 : 5;
+  const hasActions = canUpdate || canDelete;
+  const columns = 5 + (canDelete ? 1 : 0) + (hasActions ? 1 : 0);
 
   return (
     <table className={loading ? 'is-loading' : undefined}>
       <thead>
         <tr>
-          {canEdit && (
+          {canDelete && (
             <th className="check">
               <input type="checkbox" title="Chọn tất cả" aria-label="Chọn tất cả"
                      checked={allChecked} onChange={(e) => onToggleAll(e.target.checked)} />
@@ -28,7 +32,7 @@ export default function ProductTable({
           <th>Danh mục</th>
           <th>Giá (VND)</th>
           <th>Mô tả</th>
-          {canEdit && <th>Thao tác</th>}
+          {hasActions && <th>Thao tác</th>}
         </tr>
       </thead>
       <tbody>
@@ -36,21 +40,21 @@ export default function ProductTable({
           const id = Number(p.id);
           return (
             <tr key={id}>
-              {canEdit && (
+              {canDelete && (
                 <td className="check">
                   <input type="checkbox" aria-label={`Chọn ${p.name}`}
                          checked={selected.has(id)} onChange={() => onToggle(id)} />
                 </td>
               )}
-              <td>{id}</td>
+              <td>{p.seq}</td>
               <td>{p.name}</td>
               <td>{p.category_name ?? <span className="muted">Chưa phân loại</span>}</td>
               <td className="price">{formatPrice(p.price)}</td>
               <td>{p.description}</td>
-              {canEdit && (
+              {hasActions && (
                 <td className="actions">
-                  <Link to={`/edit/${id}`} className="btn btn-edit">Sửa</Link>{' '}
-                  <button type="button" className="btn btn-delete" onClick={() => onDelete(p)}>Xóa</button>
+                  {canUpdate && <><Link to={`/edit/${id}`} className="btn btn-edit">Sửa</Link>{' '}</>}
+                  {canDelete && <button type="button" className="btn btn-delete" onClick={() => onDelete(p)}>Xóa</button>}
                 </td>
               )}
             </tr>

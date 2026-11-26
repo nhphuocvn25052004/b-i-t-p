@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AuthContext } from './AuthContext.js';
 import { authService } from '../services/authService.js';
 import { setUnauthorizedHandler } from '../services/http.js';
+import { can as userCan, isManager } from '../components/users/roles.js';
 
 // Giữ state "ai đang đăng nhập" ở 1 chỗ duy nhất và chia sẻ cho mọi component bên trong
 // qua Context — không phải truyền props user qua từng tầng component.
@@ -42,9 +43,13 @@ export default function AuthProvider({ children }) {
     return data.user;
   }, []);
 
+  // can('products.create') → true/false — chỉ để ẩn/hiện nút, server vẫn kiểm tra lại
+  const can = useCallback((permission) => userCan(user, permission), [user]);
+
   const value = useMemo(
-    () => ({ user, loading, isAdmin: user?.role === 'admin', login, logout, register }),
-    [user, loading, login, logout, register]
+    // isAdmin: admin tối cao hoặc quản trị (được chọn vai trò / cấp quyền khi quản lý tài khoản)
+    () => ({ user, loading, isAdmin: isManager(user), can, login, logout, register }),
+    [user, loading, can, login, logout, register]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

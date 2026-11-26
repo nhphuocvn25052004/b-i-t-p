@@ -34,8 +34,7 @@ export default function RegisterPage() {
         <form onSubmit={handleSubmit(submit)}>
           <label htmlFor="username">Tên đăng nhập</label>
           <FilteredInput id="username" name="username" autoComplete="username" required autoFocus
-                         allowedChar={USERNAME_CHAR} value={values.username} onChange={handleChange}
-                         warning="Tên đăng nhập chỉ gồm chữ không dấu, số, dấu gạch dưới (_)." />
+                         allowedChar={USERNAME_CHAR} value={values.username} onChange={handleChange} />
           <p className="field-hint">Từ {USERNAME_MIN} ký tự: chữ không dấu, số, dấu gạch dưới (_).</p>
 
           <PasswordField id="password" name="password" label="Mật khẩu" autoComplete="new-password"

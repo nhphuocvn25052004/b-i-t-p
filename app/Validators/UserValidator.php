@@ -4,7 +4,7 @@ namespace App\Validators;
 use App\Auth\Auth;
 
 /**
- * Kiểm tra tên đăng nhập, mật khẩu, vai trò. Mỗi hàm trả về thông báo lỗi, '' = hợp lệ.
+ * Kiểm tra tên đăng nhập, mật khẩu, vai trò, danh sách quyền. Mỗi hàm trả về thông báo lỗi, '' = hợp lệ.
  *
  *   $error = $validator->passwordError($password);
  *   if ($error !== '') { ...trả lỗi 422... }
@@ -19,7 +19,7 @@ class UserValidator
     public const PASSWORD_MIN = 6;
     public const PASSWORD_MAX = 72;  // bcrypt chỉ dùng 72 byte đầu
 
-    public const ROLES = [Auth::ROLE_ADMIN, Auth::ROLE_USER];
+    public const ROLES = [Auth::ROLE_ADMIN, Auth::ROLE_EDITOR, Auth::ROLE_USER];
 
     // Chữ không dấu, số, dấu gạch dưới
     private const USERNAME_PATTERN = '/^[A-Za-z0-9_]+$/';
@@ -55,5 +55,19 @@ class UserValidator
     public function roleError(string $role): string
     {
         return in_array($role, self::ROLES, true) ? '' : 'Vai trò không hợp lệ.';
+    }
+
+    // $permissions phải là mảng, mỗi phần tử là 1 quyền trong Auth::PERMISSIONS
+    public function permissionsError($permissions): string
+    {
+        if (!is_array($permissions)) {
+            return 'Danh sách quyền không hợp lệ.';
+        }
+        foreach ($permissions as $permission) {
+            if (!is_string($permission) || !in_array($permission, Auth::PERMISSIONS, true)) {
+                return 'Quyền không hợp lệ.';
+            }
+        }
+        return '';
     }
 }

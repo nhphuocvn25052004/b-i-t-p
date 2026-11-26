@@ -1,12 +1,12 @@
 import { useEffect } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import Alert from './Alert.jsx';
-import { ROLE_LABEL } from './users/roles.js';
+import { ALL_ROLE_LABEL } from './users/roles.js';
 import { useAuth } from '../hooks/useAuth.js';
 
 // Khung trang: thanh trên cùng (menu, user, đăng xuất), tiêu đề, thông báo
 export default function Layout({ title, msg, error, children }) {
-  const { user, isAdmin, logout } = useAuth();
+  const { user, can, logout } = useAuth();
 
   useEffect(() => {
     document.title = title;
@@ -18,11 +18,11 @@ export default function Layout({ title, msg, error, children }) {
         <header className="topbar">
           <Link to="/" className="brand">Quản lý sản phẩm</Link>
           <nav className="menu">
-            {isAdmin && <NavLink to="/users">Người dùng</NavLink>}
+            {can('users.create') && <NavLink to="/users">Người dùng</NavLink>}
             <NavLink to="/account/password">Đổi mật khẩu</NavLink>
           </nav>
           <span className="who">
-            {user.username} <span className={`role role-${user.role}`}>{ROLE_LABEL[user.role] ?? user.role}</span>
+            {user.username} <span className={`role role-${user.role}`}>{ALL_ROLE_LABEL[user.role] ?? user.role}</span>
           </span>
           <button type="button" className="btn btn-cancel" onClick={logout}>Đăng xuất</button>
         </header>

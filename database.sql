@@ -14,7 +14,9 @@ DROP TABLE IF EXISTS categories;
 
 CREATE TABLE categories (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL UNIQUE
+    name VARCHAR(100) NOT NULL,
+    owner_id INT NULL,
+    UNIQUE KEY uq_categories_owner_name (owner_id, name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE products (
@@ -23,7 +25,9 @@ CREATE TABLE products (
     price DECIMAL(12,2) NOT NULL,
     description TEXT,
     category_id INT NULL,
+    created_by INT NULL,
     INDEX idx_products_category (category_id),
+    INDEX idx_products_created_by (created_by),
     CONSTRAINT fk_products_category FOREIGN KEY (category_id)
         REFERENCES categories (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -32,8 +36,27 @@ CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
-    role ENUM('admin', 'user') NOT NULL DEFAULT 'user',
+    role ENUM('admin', 'editor', 'user') NOT NULL DEFAULT 'user',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by INT NULL,
+    CONSTRAINT fk_users_created_by FOREIGN KEY (created_by)
+        REFERENCES users (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Admin tối cao — bảng riêng, tách khỏi users (xem migrations/004_super_admins.sql)
+CREATE TABLE IF NOT EXISTS super_admins (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS user_permissions (
+    user_id INT NOT NULL,
+    permission VARCHAR(50) NOT NULL,
+    PRIMARY KEY (user_id, permission),
+    CONSTRAINT fk_user_permissions_user FOREIGN KEY (user_id)
+        REFERENCES users (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS login_attempts (
@@ -45,9 +68,19 @@ CREATE TABLE IF NOT EXISTS login_attempts (
     PRIMARY KEY (username, ip)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Tài khoản demo: admin / admin123 (toàn quyền), user / user123 (chỉ xem). ĐỔI MẬT KHẨU khi dùng thật.
+-- Chủ sở hữu sản phẩm / danh mục (bảng users tạo sau products, categories nên thêm khóa ngoại ở đây)
+ALTER TABLE products ADD CONSTRAINT fk_products_created_by FOREIGN KEY (created_by)
+    REFERENCES users (id) ON DELETE SET NULL;
+ALTER TABLE categories ADD CONSTRAINT fk_categories_owner FOREIGN KEY (owner_id)
+    REFERENCES users (id) ON DELETE SET NULL;
+
+-- Tài khoản demo — ĐỔI MẬT KHẨU khi dùng thật:
+--   admin / admin123  admin tối cao (bảng super_admins)
+--   user  / user123   chỉ xem
+INSERT IGNORE INTO super_admins (username, password_hash) VALUES
+('admin', '$2y$12$kCIh7o2yR0jBNskDBIFajulufMJ0vQsBNfrbAZB1ZF3g5ifU/v5zu');
+
 INSERT IGNORE INTO users (username, password_hash, role) VALUES
-('admin', '$2y$12$kCIh7o2yR0jBNskDBIFajulufMJ0vQsBNfrbAZB1ZF3g5ifU/v5zu', 'admin'),
 ('user',  '$2y$12$D9MbG3pe3Wji9S/U3Kivt.xk5MIct5nJuOWiPSp6w3UlxZfgHvDrm', 'user');
 
 INSERT INTO categories (id, name)

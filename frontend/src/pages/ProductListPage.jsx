@@ -17,7 +17,10 @@ import { productService } from '../services/productService.js';
 // Trang này giữ state và truyền xuống các component con bằng props;
 // các component con báo ngược lên bằng callback (onSearch, onChange, onDelete...).
 export default function ProductListPage() {
-  const { isAdmin } = useAuth();
+  const { can } = useAuth();
+  const canCreate = can('products.create');
+  const canUpdate = can('products.update');
+  const canDelete = can('products.delete');
   const { filters, isFiltered, setSearch, setCategory, setPage, setPerPage, clear } = useProductFilters();
   const {
     items, total, page, total_pages: totalPages, requestedPage, loading, error: loadError, reload,
@@ -71,7 +74,7 @@ export default function ProductListPage() {
   return (
     <Layout title={title} msg={msg} error={error || loadError || categoryError}>
       <div className="toolbar">
-        {isAdmin && <Link to="/create" className="btn btn-add">+ Thêm</Link>}
+        {canCreate && <Link to="/create" className="btn btn-add">+ Thêm</Link>}
 
         <SearchBar value={filters.q} onSearch={withReset(setSearch)} />
 
@@ -82,7 +85,7 @@ export default function ProductListPage() {
           <button type="button" className="btn btn-cancel" onClick={withReset(clear)}>Bỏ lọc</button>
         )}
 
-        {isAdmin && (
+        {canDelete && (
           <button type="button" className="btn btn-delete" onClick={removeSelected}>
             Xóa đã chọn{selection.ids.length > 0 && ` (${selection.ids.length})`}
           </button>
@@ -101,7 +104,8 @@ export default function ProductListPage() {
         products={items}
         loading={loading}
         emptyText={isFiltered ? 'Không tìm thấy sản phẩm phù hợp' : 'Không có dữ liệu'}
-        canEdit={isAdmin}
+        canUpdate={canUpdate}
+        canDelete={canDelete}
         selected={selection.selected}
         allChecked={selection.allChecked}
         onToggle={selection.toggle}

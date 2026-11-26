@@ -79,17 +79,37 @@ Muốn đổi cách gọi API (vd thêm header) chỉ sửa `services/`; muốn 
 | | **Authentication** (xác thực) | **Authorization** (phân quyền) |
 |---|---|---|
 | Câu hỏi | **Bạn là ai?** | **Bạn được làm gì?** |
-| Cách làm | Đăng nhập bằng tên + mật khẩu | Kiểm tra vai trò (role) của người đã xác thực |
+| Cách làm | Đăng nhập bằng tên + mật khẩu | Kiểm tra vai trò (role) và quyền (permission) của người đã xác thực |
 | Lỗi HTTP | **401** Unauthorized — chưa đăng nhập / hết phiên | **403** Forbidden — đã biết bạn là ai nhưng không đủ quyền |
-| Trong dự án | `$auth->requireLogin()` trong `app/Auth/Auth.php` | `$auth->requireRole(Auth::ROLE_ADMIN)` trong `app/Auth/Auth.php` |
+| Trong dự án | `$auth->requireLogin()` trong `app/Auth/Auth.php` | `$auth->requirePermission(...)`, `$auth->requireRole(...)` trong `app/Auth/Auth.php` |
 
 Phân quyền trong dự án:
 
-| Thao tác | Khách | `user` | `admin` |
-|---|---|---|---|
-| Đăng ký tài khoản | ✓ | — | — |
-| Xem, tìm kiếm, lọc, phân trang, đổi mật khẩu | ✗ (401) | ✓ | ✓ |
-| Thêm, sửa, xóa sản phẩm; quản lý người dùng | ✗ (401) | ✗ (403) | ✓ |
+- **Admin tối cao** (`superadmin`, bảng riêng `super_admins`): thấy và làm mọi thứ với mọi tài khoản,
+  kể cả cưỡng chế đổi mật khẩu và xóa; quản lý cả bảng `super_admins` (thêm, nâng / hạ cấp, xóa —
+  trừ chính mình, nên luôn còn ít nhất 1 admin tối cao).
+- **`admin`** (quản trị): mọi quyền với sản phẩm, nhưng chỉ quản lý được **cây tài khoản nằm dưới mình**
+  (người mình tạo / nâng lên, và người do họ tạo...). Các quản trị không nhìn thấy nhau.
+- **`editor`** (user1): chỉ làm những việc admin **tick cấp** cho riêng mình (bảng `user_permissions`).
+- **`user`** (user2): chỉ xem. Do admin / editor tạo, hoặc tự đăng ký.
+
+| Thao tác | Khách | `user` | `editor` | `admin` |
+|---|---|---|---|---|
+| Đăng ký tài khoản (ra `user`) | ✓ | — | — | — |
+| Xem, tìm kiếm, lọc, phân trang, đổi mật khẩu | ✗ (401) | ✓ | ✓ | ✓ |
+| Thêm / sửa / xóa sản phẩm | ✗ (401) | ✗ (403) | nếu được cấp `products.create` / `.update` / `.delete` | ✓ |
+| Tạo / đặt lại mật khẩu / xóa tài khoản xem | ✗ (401) | ✗ (403) | nếu được cấp `users.create` — chỉ tài khoản **nằm dưới mình** | ✓ trong cây của mình (admin tối cao: mọi tài khoản) |
+| Tạo / nâng lên quản trị, editor; cấp quyền | ✗ (401) | ✗ (403) | ✗ (403) | ✓ trong cây của mình (admin tối cao: mọi tài khoản) |
+
+Cột `admin` ở trên áp dụng cho cả admin tối cao, chỉ khác phạm vi tài khoản.
+
+Ngoài "được làm gì" còn có **"được thấy dữ liệu nào"** (`app/Auth/DataScope.php`): mỗi quản trị có sản phẩm
+và danh mục riêng; quản trị thấy dữ liệu của cả nhánh mình, editor chỉ thấy sản phẩm mình thêm, người xem
+thấy sản phẩm của người đã tạo ra mình. Người xem tự đăng ký thuộc admin tối cao: xem được mọi sản phẩm
+nhưng không làm được gì khác, và chỉ admin tối cao quản lý họ. Kiểm tra quyền (403) và lọc phạm vi (404) đều làm ở server.
+
+Luật nằm ở một chỗ, `Auth::can($user, $permission)`: admin → luôn đúng; editor → có trong danh sách
+được cấp; user → luôn sai. `requirePermission()` = `requireLogin()` (401) + `can()` (403).
 
 **Quan trọng:** ẩn nút "Thêm/Sửa/Xóa" và `ProtectedRoute` ở React **chỉ để giao diện gọn**.
 Ai cũng có thể mở DevTools hoặc dùng `curl` gọi thẳng API, nên **mọi kiểm tra quyền phải làm ở server**.

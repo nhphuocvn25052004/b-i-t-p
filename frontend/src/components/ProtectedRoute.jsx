@@ -4,10 +4,12 @@ import { useAuth } from '../hooks/useAuth.js';
 
 // Bảo vệ route phía giao diện:
 //   - chưa đăng nhập  → chuyển tới /login (Authentication)
-//   - sai vai trò     → về trang chủ kèm thông báo (Authorization)
+//   - sai vai trò / thiếu quyền → lặng lẽ về trang chủ, không báo lỗi (Authorization)
+//     <ProtectedRoute role="admin">            chỉ admin
+//     <ProtectedRoute permission="products.create">  admin, hoặc editor được cấp quyền
 // Lưu ý: đây chỉ để ẩn giao diện. Kiểm tra quyền THẬT nằm ở server (app/Auth/Auth.php).
-export default function ProtectedRoute({ role, children }) {
-  const { user, loading } = useAuth();
+export default function ProtectedRoute({ role, permission, children }) {
+  const { user, loading, can } = useAuth();
   const location = useLocation();
 
   if (loading) return <Loading />;
@@ -16,8 +18,8 @@ export default function ProtectedRoute({ role, children }) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  if (role && user.role !== role) {
-    return <Navigate to="/" replace state={{ error: 'Bạn không có quyền truy cập trang này.' }} />;
+  if ((role && user.role !== role) || (permission && !can(permission))) {
+    return <Navigate to="/" replace />;
   }
 
   return children;

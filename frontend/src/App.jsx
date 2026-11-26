@@ -19,10 +19,10 @@ export default function App() {
       <Route path="/" element={<ProtectedRoute><ProductListPage /></ProtectedRoute>} />
       <Route path="/account/password" element={<ProtectedRoute><ChangePasswordPage /></ProtectedRoute>} />
 
-      {/* Chỉ admin: thêm / sửa sản phẩm, quản lý người dùng */}
-      <Route path="/create" element={<ProtectedRoute role="admin"><ProductCreatePage /></ProtectedRoute>} />
-      <Route path="/edit/:id" element={<ProtectedRoute role="admin"><ProductEditPage /></ProtectedRoute>} />
-      <Route path="/users" element={<ProtectedRoute role="admin"><UserListPage /></ProtectedRoute>} />
+      {/* Theo quyền: admin luôn được, editor chỉ khi admin đã cấp quyền đó */}
+      <Route path="/create" element={<ProtectedRoute permission="products.create"><ProductCreatePage /></ProtectedRoute>} />
+      <Route path="/edit/:id" element={<ProtectedRoute permission="products.update"><ProductEditPage /></ProtectedRoute>} />
+      <Route path="/users" element={<ProtectedRoute permission="users.create"><UserListPage /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

@@ -110,7 +110,8 @@ class AuthController
         JsonResponse::send(['ok' => true]);
     }
 
-    // Ai cũng tự đăng ký được; tài khoản mới luôn là 'user' (chỉ admin mới tạo được admin)
+    // Ai cũng tự đăng ký được; tài khoản mới luôn là 'user' (user2 — chỉ xem), created_by = NULL.
+    // Chỉ admin mới tạo được admin / editor.
     public function register(): void
     {
         $body     = $this->request->json();

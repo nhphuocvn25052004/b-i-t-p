@@ -16,3 +16,11 @@ export function formatWait(seconds) {
   const rest = seconds % 60;
   return rest ? `${minutes} phút ${rest} giây` : `${minutes} phút`;
 }
+
+// Hàm đặt tên danh mục cho ô chọn. Mỗi quản trị có bộ danh mục riêng nên có thể trùng tên
+// (admin tối cao thấy "Tàu thủy" của nhiều người) → khi danh sách có nhiều chủ thì thêm tên chủ.
+//   const label = categoryLabeler(categories);  label(c) → "Tàu thủy (user2)"
+export function categoryLabeler(categories) {
+  const multiOwner = new Set(categories.map((c) => c.owner_id ?? null)).size > 1;
+  return (c) => (multiOwner ? `${c.name} (${c.owner_name ?? 'admin tối cao'})` : c.name);
+}

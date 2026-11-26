@@ -5,7 +5,9 @@ danh mục, phân trang, thêm / sửa / xóa (CRUD), quản lý người dùng.
 
 - **Giao diện:** React 18 (Vite, react-router-dom) — thư mục `frontend/`, phục vụ qua `index.php`
 - **Backend:** PHP thuần (mysqli) cung cấp API JSON — thư mục `api/`
-- **Đăng nhập:** PHP Session + cookie HttpOnly; `admin` toàn quyền, `user` chỉ xem.
+- **Đăng nhập:** PHP Session + cookie HttpOnly. Phân quyền: **admin tối cao** (bảng riêng `super_admins`)
+  thấy và quản lý mọi tài khoản; `admin` (quản trị) chỉ quản lý cây tài khoản do mình tạo / nâng lên;
+  `editor` (user1) chỉ làm những việc được cấp; `user` (user2) chỉ xem.
   Tự đăng ký (vai trò `user`), đổi mật khẩu, khóa tạm khi nhập sai mật khẩu quá 3 lần
 
 Kiến thức nền (State/Props, Authentication/Authorization, Cookie/Session/JWT, luồng đăng nhập):
@@ -27,6 +29,13 @@ xem [docs/KIEN_THUC.md](docs/KIEN_THUC.md).
      - bản chưa có danh mục / đăng nhập: `mysql -u root -p < migrations/001_categories_users.sql`
      - bản chưa có chống dò mật khẩu / ngày tạo tài khoản:
        `mysql -u root -p < migrations/002_login_attempts_user_created_at.sql`
+     - bản chưa có phân quyền 3 cấp (editor, cấp quyền):
+       `mysql -u root -p < migrations/003_roles_permissions.sql`
+     - bản chưa có admin tối cao (bảng `super_admins`):
+       `mysql -u root -p < migrations/004_super_admins.sql` — mọi `admin` không do ai tạo được
+       chuyển sang `super_admins` (giữ nguyên mật khẩu)
+     - bản chưa có chủ sở hữu sản phẩm / danh mục: `mysql -u root -p < migrations/005_data_owner.sql`
+       (dữ liệu cũ thuộc admin tối cao; gán cho từng quản trị bằng `UPDATE products SET created_by = …`)
 
 2. Tạo user MySQL cho web và cấp quyền trên `website_db`:
 
@@ -43,8 +52,10 @@ xem [docs/KIEN_THUC.md](docs/KIEN_THUC.md).
 
 | Tên đăng nhập | Mật khẩu   | Quyền                    |
 |---------------|------------|--------------------------|
-| `admin`       | `admin123` | xem, thêm, sửa, xóa      |
+| `admin`       | `admin123` | admin tối cao — mọi thứ, mọi tài khoản |
 | `user`        | `user123`  | chỉ xem / tìm / lọc      |
+
+Tài khoản quản trị / biên tập viên do admin tối cao (hoặc quản trị) tạo ở menu **Người dùng**.
 
 Đổi mật khẩu (menu **Đổi mật khẩu**) hoặc xóa các tài khoản này (menu **Người dùng**)
 trước khi đưa lên internet.
@@ -91,7 +102,8 @@ Nginx (`root /var/www/html`) chỉ mở các đường dẫn sau, còn lại tr�
 ```
 ├── api/                      điểm vào API — mỗi file chỉ tạo controller rồi gọi handle()
 │   ├── auth.php              → AuthController
-│   ├── users.php             → UserController (chỉ admin)
+│   ├── users.php             → UserController (quản lý tài khoản)
+│   ├── super_admins.php      → SuperAdminController (chỉ admin tối cao)
 │   ├── products.php          → ProductController
 │   └── categories.php        → CategoryController
 ├── app/                      backend PHP hướng đối tượng, namespace App\ (PSR-4)
@@ -107,13 +119,15 @@ Nginx (`root /var/www/html`) chỉ mở các đường dẫn sau, còn lại tr�
 │   │   └── LoginThrottle.php chống dò mật khẩu: sai 3 lần → khóa tạm, sai càng nhiều chờ càng lâu (429)
 │   ├── Controllers/          nhận request, kiểm tra quyền, gọi repository, trả JSON
 │   │   ├── AuthController.php      đăng nhập / đăng xuất / đăng ký / đổi mật khẩu
-│   │   ├── UserController.php      quản lý người dùng (admin)
+│   │   ├── UserController.php      quản lý người dùng (theo cây "ai tạo ai")
+│   │   ├── SuperAdminController.php  quản lý bảng super_admins (admin tối cao)
 │   │   ├── ProductController.php
 │   │   └── CategoryController.php
 │   ├── Repositories/         mọi câu SQL
 │   │   ├── ProductRepository.php
 │   │   ├── CategoryRepository.php
-│   │   ├── UserRepository.php
+│   │   ├── UserRepository.php        bảng users (+ cây "ai tạo ai", user_permissions)
+│   │   ├── SuperAdminRepository.php  bảng super_admins (admin tối cao)
 │   │   └── LoginAttemptRepository.php   bảng login_attempts
 │   ├── Validators/
 │   │   ├── ProductValidator.php    kiểm tra dữ liệu sản phẩm (lỗi → 422)
@@ -153,7 +167,7 @@ Nginx (`root /var/www/html`) chỉ mở các đường dẫn sau, còn lại tr�
         │   ├── Layout.jsx, Alert.jsx, Loading.jsx, ProtectedRoute.jsx
         │   ├── PasswordField.jsx   ô mật khẩu, báo ngay khi gõ chữ có dấu
         │   ├── products/  SearchBar, CategoryFilter, ProductTable, Pagination, ProductForm
-        │   └── users/     UserForm, UserTable, roles.js
+        │   └── users/     UserForm, UserTable, PermissionChecks, roles.js
         ├── pages/                LoginPage, RegisterPage, ChangePasswordPage, UserListPage,
         │                         ProductListPage, ProductCreatePage, ProductEditPage
         └── utils/                format.js, validation.js (quy tắc tên đăng nhập / mật khẩu)
@@ -173,16 +187,41 @@ Mọi API trả JSON; lỗi có dạng `{"error": "..."}`. Request có body ph�
 | POST        | `api/auth.php?action=logout`                             | —        | `{"ok": true}` |
 | POST        | `api/auth.php?action=register` `{username, password}`    | —        | `{"user": {...}}` (201, đăng nhập luôn), trùng tên → 409 |
 | POST        | `api/auth.php?action=change_password` `{current_password, new_password}` | đăng nhập | `{"ok": true}`, sai mật khẩu hiện tại → 422 / 429 |
-| GET         | `api/users.php`                                          | admin    | `[{id, username, role, created_at}]` |
-| POST        | `api/users.php` `{username, password, role}`             | admin    | tạo tài khoản (201), trùng tên → 409 |
-| PUT         | `api/users.php?id=3` `{role}`                            | admin    | đổi vai trò (không đổi được chính mình) |
-| DELETE      | `api/users.php?id=3`                                     | admin    | xóa tài khoản (không xóa được chính mình) |
-| GET         | `api/categories.php`                                     | đăng nhập | `[{id, name, product_count}]` |
+| GET         | `api/users.php`                                          | `users.create` | `[{id, username, role, created_at, created_by, created_by_name, permissions}]` — trong phạm vi (xem dưới) |
+| POST        | `api/users.php` `{username, password, role, permissions}` | `users.create` | tạo tài khoản (201), trùng tên → 409; editor luôn tạo ra `user` |
+| PUT         | `api/users.php?id=3` `{role, permissions}`               | quản trị | đổi vai trò / quyền, vd. nâng lên quản trị (không đổi được chính mình) |
+| POST        | `api/users.php?id=3&action=reset_password` `{password}`  | `users.create` | cưỡng chế đặt mật khẩu mới; người đó bị đăng xuất |
+| PUT         | `api/users.php?id=3` `{"role": "superadmin"}`            | admin tối cao | nâng lên admin tối cao (chuyển sang bảng `super_admins`) |
+| GET         | `api/super_admins.php`                                   | admin tối cao | `[{id, username, created_at}]` |
+| POST        | `api/super_admins.php` `{username, password}`            | admin tối cao | thêm admin tối cao (201), trùng tên → 409 |
+| POST        | `api/super_admins.php?id=2&action=reset_password` `{password}` | admin tối cao | cưỡng chế đặt mật khẩu mới |
+| POST        | `api/super_admins.php?id=2&action=demote` `{role}`       | admin tối cao | hạ xuống bảng `users` (admin / editor / user) |
+| DELETE      | `api/super_admins.php?id=2`                              | admin tối cao | xóa (không tự hạ cấp / tự xóa được → luôn còn ít nhất 1) |
+| DELETE      | `api/users.php?id=3`                                     | `users.create` | xóa tài khoản (không xóa được chính mình); người nó đã tạo chuyển về người tạo ra nó |
+
+Phạm vi quản lý tài khoản (theo cây "ai tạo ai", cột `users.created_by`): admin tối cao → mọi tài khoản;
+quản trị → mọi tài khoản nằm dưới mình (con, cháu...), không thấy các quản trị khác trừ người do chính mình
+tạo / nâng lên; editor → tài khoản xem nằm dưới mình. Tài khoản ngoài phạm vi → 404.
+| GET         | `api/categories.php`                                     | đăng nhập | `[{id, name, owner_id, owner_name, product_count}]` — trong phạm vi |
 | GET         | `api/products.php?q=&category=&page=1&per_page=10`       | đăng nhập | `{items, total, page, per_page, total_pages}` |
 | GET         | `api/products.php?id=3`                                  | đăng nhập | 1 sản phẩm, không có → 404 |
-| POST        | `api/products.php` `{name, price, description, category_id}` | admin | thêm (201) |
-| PUT         | `api/products.php?id=3` `{...}`                          | admin    | cập nhật |
-| DELETE      | `api/products.php` `{"ids": [1, 2]}`                     | admin    | `{"deleted": 2}` |
+| POST        | `api/products.php` `{name, price, description, category_id}` | `products.create` | thêm (201) |
+| PUT         | `api/products.php?id=3` `{...}`                          | `products.update` | cập nhật |
+| DELETE      | `api/products.php` `{"ids": [1, 2]}`                     | `products.delete` | `{"deleted": 2}` |
+
+Cột "Quyền" ghi tên quyền: admin tối cao và quản trị luôn có, editor có khi được cấp, `user` không bao giờ có.
+
+**Phạm vi dữ liệu** (`app/Auth/DataScope.php`) — sản phẩm ngoài phạm vi trả về 404 / không bị xóa:
+
+| | Sản phẩm thấy được | Danh mục thấy được |
+|---|---|---|
+| admin tối cao | tất cả | tất cả |
+| quản trị | của mình + mọi tài khoản nằm dưới mình | của mình + các quản trị nằm dưới mình |
+| editor | chỉ sản phẩm mình thêm | của quản trị gần nhất phía trên |
+| user do quản trị / editor tạo | sản phẩm của người đã tạo ra mình | của quản trị gần nhất phía trên |
+| user tự đăng ký / do admin tối cao tạo | **tất cả** (chỉ xem) | tất cả |
+
+Người xem tự đăng ký thuộc quyền admin tối cao: các quản trị không thấy, không đổi mật khẩu, không xóa được họ.
 
 `category`: bỏ trống = tất cả, `none` = chưa phân loại, số = id danh mục.
 `page` vượt quá số trang thì trả về trang cuối. `per_page` tối đa 100.
@@ -192,7 +231,7 @@ và header `Retry-After`).
 
 ## CSDL
 
-**`categories`**: `id`, `name` (duy nhất)
+**`categories`**: `id`, `name`, `owner_id` (quản trị sở hữu; NULL = admin tối cao) — tên duy nhất trong cùng 1 chủ
 
 **`products`**
 
@@ -203,8 +242,16 @@ và header `Retry-After`).
 | `price`       | DECIMAL(12,2) | Bắt buộc, ≥ 0 (VND)                           |
 | `description` | TEXT          | Không bắt buộc                                |
 | `category_id` | INT NULL      | Khóa ngoại → `categories.id`; xóa danh mục thì về NULL |
+| `created_by`  | INT NULL      | Người thêm → `users.id`; NULL = admin tối cao. Xóa người đó thì chuyển cho người tạo ra họ |
 
-**`users`**: `id`, `username` (duy nhất), `password_hash` (bcrypt), `role` (`admin` / `user`), `created_at`
+**`users`**: `id`, `username` (duy nhất), `password_hash` (bcrypt), `role` (`admin` / `editor` / `user`), `created_at`,
+`created_by` (người tạo; NULL = tự đăng ký hoặc do admin tối cao tạo; xóa người tạo thì chuyển về người tạo ra họ)
+
+**`super_admins`**: `id`, `username` (duy nhất, không trùng với `users`), `password_hash`, `created_at` —
+admin tối cao, tách riêng khỏi `users`. Đăng nhập cùng 1 form; session ghi rõ tài khoản thuộc bảng nào.
+
+**`user_permissions`**: (`user_id`, `permission`) — quyền admin cấp cho từng editor
+(`products.create`, `products.update`, `products.delete`, `users.create`); xóa tài khoản thì xóa theo
 
 **`login_attempts`**: số lần nhập sai mật khẩu liên tiếp theo cặp (`username`, `ip`) — `failures`,
 `locked_until`, `last_failed_at`. Đăng nhập đúng thì xóa dòng tương ứng.
@@ -256,6 +303,9 @@ sudo mysql < database.sql   # database.sql → MySQL (XÓA bảng products, cate
   có hiệu lực ngay; đổi mật khẩu thì các phiên đăng nhập khác bị đăng xuất.
 - Tự đăng ký chỉ tạo được vai trò `user`; admin không đổi vai trò / xóa được chính mình
   (luôn còn ít nhất 1 admin).
+- Quản trị chỉ thấy / quản lý cây tài khoản nằm dưới mình (không thấy quản trị khác, không thấy admin tối cao);
+  editor chỉ tạo được `user`, chỉ quản lý tài khoản xem nằm dưới mình, không đổi được vai trò / quyền.
+  Tài khoản ngoài phạm vi trả về 404 để không lộ ai đang có trong hệ thống. Quyền cũng đọc lại mỗi request → admin bỏ quyền là có hiệu lực ngay.
 - API ghi dữ liệu bắt buộc JSON → form của trang khác không giả mạo được (CSRF).
 - Quyền được kiểm tra ở **server** (`app/Auth/Auth.php`); ẩn nút trên giao diện chỉ để gọn.
 - Không commit `config.php` (đã có trong `.gitignore`). Chỉ cần đưa `index.php`, `frontend/dist/`, `api/`, `app/`,

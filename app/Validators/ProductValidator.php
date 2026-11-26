@@ -25,12 +25,13 @@ class ProductValidator
     }
 
     /**
+     * @param int[]|null $categoryOwners danh mục được chọn phải thuộc các chủ này (null = mọi danh mục)
      * @return array{0: array, 1: string} [dữ liệu đã làm sạch, thông báo lỗi ('' = hợp lệ)]
      */
-    public function validate(array $input): array
+    public function validate(array $input, ?array $categoryOwners = null): array
     {
         $data  = $this->normalize($input);
-        $error = $this->firstError($data);
+        $error = $this->firstError($data, $categoryOwners);
         return [$data, $error];
     }
 
@@ -48,7 +49,7 @@ class ProductValidator
     }
 
     // Lỗi đầu tiên tìm thấy, hợp lệ thì trả về ''
-    private function firstError(array $data): string
+    private function firstError(array $data, ?array $categoryOwners): string
     {
         if ($data['name'] === '' || !is_numeric($data['price']) || $data['price'] < 0) {
             return 'Vui lòng nhập tên và giá hợp lệ.';
@@ -60,7 +61,7 @@ class ProductValidator
         if ($data['price'] > ProductRepository::MAX_PRICE) {
             return 'Giá tối đa là ' . number_format(ProductRepository::MAX_PRICE, 2) . ' VND.';
         }
-        if ($data['category_id'] !== null && !$this->categories->exists($data['category_id'])) {
+        if ($data['category_id'] !== null && !$this->categories->exists($data['category_id'], $categoryOwners)) {
             return 'Danh mục không tồn tại.';
         }
         return '';

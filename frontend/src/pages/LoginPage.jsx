@@ -7,7 +7,7 @@ import { useAuth } from '../hooks/useAuth.js';
 import { useForm } from '../hooks/useForm.js';
 import { useLockout } from '../hooks/useLockout.js';
 import { useSubmit } from '../hooks/useSubmit.js';
-import { passwordCharError, USERNAME_CHAR } from '../utils/validation.js';
+import { USERNAME_CHAR } from '../utils/validation.js';
 
 // Trang đăng nhập.
 // Thành công → quay lại trang người dùng định vào trước đó (location.state.from)
@@ -22,9 +22,6 @@ export default function LoginPage() {
   const lockout = useLockout();
   const { values, handleChange, handleSubmit } = useForm({ username: '', password: '' });
   const { submit, submitting, error } = useSubmit(async ({ username, password }) => {
-    // Mật khẩu có chữ có dấu thì chắc chắn sai — báo luôn, không tốn 1 lần thử
-    const charError = passwordCharError(password);
-    if (charError) throw new Error(charError);
     try {
       await login(username, password);
       navigate(target, { replace: true });
@@ -42,8 +39,7 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit(submit)}>
           <label htmlFor="username">Tên đăng nhập</label>
           <FilteredInput id="username" name="username" autoComplete="username" required autoFocus
-                         allowedChar={USERNAME_CHAR} value={values.username} onChange={handleChange}
-                         warning="Tên đăng nhập chỉ gồm chữ không dấu, số, dấu gạch dưới (_)." />
+                         allowedChar={USERNAME_CHAR} value={values.username} onChange={handleChange} />
 
           <PasswordField id="password" name="password" label="Mật khẩu" autoComplete="current-password"
                          value={values.password} onChange={handleChange} />

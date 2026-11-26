@@ -2,10 +2,12 @@
 namespace App\Core;
 
 use App\Auth\Auth;
+use App\Auth\DataScope;
 use App\Auth\LoginThrottle;
 use App\Repositories\CategoryRepository;
 use App\Repositories\LoginAttemptRepository;
 use App\Repositories\ProductRepository;
+use App\Repositories\SuperAdminRepository;
 use App\Repositories\UserRepository;
 use App\Validators\ProductValidator;
 use App\Validators\UserValidator;
@@ -66,6 +68,13 @@ class App
         });
     }
 
+    public function superAdmins(): SuperAdminRepository
+    {
+        return $this->once('superAdmins', function () {
+            return new SuperAdminRepository($this->database);
+        });
+    }
+
     public function productValidator(): ProductValidator
     {
         return $this->once('productValidator', function () {
@@ -83,7 +92,14 @@ class App
     public function auth(): Auth
     {
         return $this->once('auth', function () {
-            return new Auth($this->users());
+            return new Auth($this->users(), $this->superAdmins());
+        });
+    }
+
+    public function dataScope(): DataScope
+    {
+        return $this->once('dataScope', function () {
+            return new DataScope($this->users());
         });
     }
 
